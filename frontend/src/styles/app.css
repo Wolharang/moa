@@ -4451,8 +4451,10 @@ button.list-item:active{ opacity: .6; }
 #s-ob .sv-row:first-child{border-top:none;}
 #s-ob .sv-row .r1{display:flex;align-items:center;gap:8px;}
 #s-ob .sv-row .nm{font-size:17px;font-weight:700;color:var(--t1);letter-spacing:-.5px;}
+/* 프로토타입은 `var(--fill)` 을 쓰는데 우리 토큰에 없는 이름이다 — 없는 변수를 쓰면 그
+   선언이 통째로 무효가 된다(`check-css-tokens` 가 막는다). 같은 뜻의 `--track` 을 쓴다. */
 #s-ob .sv-row .cat{margin-left:auto;font-size:12px;font-weight:600;border-radius:20px;padding:4px 10px;
-  background:var(--fill);color:var(--t2);}
+  background:var(--track);color:var(--t2);}
 #s-ob .sv-row .r2{display:flex;align-items:baseline;gap:8px;margin-top:10px;}
 #s-ob .sv-row .r2 span{font-size:13px;font-weight:500;color:var(--t3);}
 #s-ob .sv-row .r2 b{font-size:17px;font-weight:700;color:var(--t1);letter-spacing:-.4px;}
