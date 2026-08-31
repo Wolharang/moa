@@ -47,7 +47,10 @@ export function SaveList({ items }: { items: OnboardingSaveItem[] }) {
           <div className={`sv-row${fresh != null && i >= fresh ? ' fresh' : ''}`} key={c.sub}>
             <div className="r1">
               <span className="nm">{c.sub}</span>
-              <span className="cat">{catLabel(c.categoryCode, c.categoryCode)}</span>
+              {/* 소분류를 못 푼 항목은 이름이 곧 중분류다 — 같은 말을 두 번 적지 않는다. */}
+              {c.sub !== c.categoryCode && (
+                <span className="cat">{catLabel(c.categoryCode, c.categoryCode)}</span>
+              )}
             </div>
             <div className="r2"><span>월평균</span><b>{won(c.monthlyAmount)}</b></div>
             {/* 근거는 모델이 한 말이다. 없으면 그 줄을 비운다. */}

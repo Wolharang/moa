@@ -46,10 +46,24 @@ class SaveItemSelectorTest {
     }
 
     @Test
-    @DisplayName("소분류를 못 푼 결제는 항목이 되지 않는다 — 줄일 대상을 말해 줄 수 없다")
-    void 소분류가_없으면_뺀다() {
+    @DisplayName("소분류를 못 풀면 중분류로 묶는다 — 거친 단위라도 고를 수 있어야 한다")
+    void 소분류가_없으면_중분류로() {
         var w = new ArrayList<>(many(null, "취미/여가", 20000, 5, true));
-        assertTrue(select(w, 3).isEmpty());
+        var items = select(w, 3);
+        assertEquals(1, items.size(), "버리지 않는다");
+        assertEquals("취미/여가", items.get(0).sub());
+        assertEquals("취미/여가", items.get(0).category2());
+    }
+
+    @Test
+    @DisplayName("아는 것은 소분류로, 모르는 것은 중분류로 — 한 카테고리 안에서 갈린다")
+    void 아는만큼_잘게() {
+        // 제거가능(재량 0.70)이라 절감액이 낭비 비율만큼 나온다 — 중앙값 초과분이 0 이어도 남는다.
+        var w = new ArrayList<SaveItemSelector.Payment>();
+        w.addAll(many("게임", "취미/여가", 20000, 5, true));   // 소분류를 안다
+        w.addAll(many(null, "취미/여가", 20000, 5, true));     // 모른다
+        var names = select(w, 3).stream().map(SaveItemSelector.SaveItem::sub).sorted().toList();
+        assertEquals(List.of("게임", "취미/여가"), names);
     }
 
     @Test
