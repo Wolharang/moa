@@ -520,12 +520,42 @@ export interface OnboardingCategory {
   protectedCategory: boolean;
   payments: OnboardingPayment[];
 }
+/**
+ * 아껴볼 소비 하나 — <b>소분류 단위</b>다.
+ *
+ * <p>중분류(`식비`)는 사람이 행동으로 옮길 수 있는 단위가 아니다. 밥을 끊을 수는 없다.
+ * 소분류(`배달`·`택시`·`커피전문점`)는 끊거나 줄일 수 있는 대상이고, 소분류는 정확히 한
+ * 중분류에만 속하므로 챌린지로 넘길 때 중분류가 정확히 되돌아온다.
+ *
+ * <p><b>시간대 꼬리표가 없다.</b> 설계안은 `평일 19~22시` 처럼 시간대를 항목의 정체성으로
+ * 삼았지만, 실 명세서에는 시각이 없어 결제가 전부 같은 시각으로 들어온다. 없는 사실을
+ * 꼬리표로 달지 않는다.
+ */
+export interface OnboardingSaveItem {
+  /** 소분류 이름. 화면의 제목이다. */
+  sub: string;
+  /** 그 소분류가 속한 중분류. 화면의 칩이고, 챌린지로 넘길 때의 키다. */
+  categoryCode: string;
+  /** 월 환산 지출. */
+  monthlyAmount: number;
+  /** 결제 건수(취소 제외). */
+  count: number;
+  /** 그중 모델이 낭비로 본 금액(월 환산). */
+  wasteAmount: number;
+  /** 권하는 절감액(월 환산). */
+  suggestedCut: number;
+  /** 모델이 그렇게 본 근거. 없으면 `null` — 화면이 지어내지 않는다. */
+  why: string | null;
+}
+
 export interface OnboardingWindow {
   userId: number;
   windowDays: number;
   from: string;
   to: string;
   categories: OnboardingCategory[];
+  /** 고를 수 있는 항목. 중분류가 아니라 소분류다. */
+  saveItems: OnboardingSaveItem[];
 }
 
 /** 결제별 ML 낭비/필수 판정 + '왜' (§W8, /api/ml/waste). */
@@ -618,6 +648,27 @@ export interface CutSelection {
 export interface Narrative { text: string; source: string }
 
 /** 또래 비교 — 같은 나이대의 <b>중앙값</b>과 내 지출. 평균이 아닌 이유는 서버 쪽에 적었다. */
+/** 사람이 결제에 붙인 답. 안 붙인 것은 값이 없는 것이지 셋째 값이 아니다. */
+export type Verdict = 'WASTE' | 'FINE';
+
+/** 한 갈래의 집계. */
+export interface LabelBucket { count: number; amount: number }
+
+/**
+ * 기간에 붙인 라벨 요약 (프로토타입_0828 주간 리포트).
+ *
+ * `leakTop` 은 새는 돈이 가장 몰린 중분류다 — 없으면 `null` 이고 그 문장은 안 뜬다.
+ */
+export interface LabelSummary {
+  period: 'week' | 'month';
+  start: string;
+  end: string;
+  fine: LabelBucket;
+  leak: LabelBucket;
+  unlabeled: number;
+  leakTop: string | null;
+}
+
 export interface PeerCompare {
   mine: number;
   peer: number;
@@ -1199,6 +1250,18 @@ export const api = {
    */
   peerCompare: (userId: number, days = 30) =>
     get<PeerCompare | null>(`/api/report/peer?userId=${userId}&days=${days}`),
+
+  /* ── 결제별 사람의 답 (프로토타입_0828 `.ctx3`) ── */
+
+  /** 그 사람이 붙인 답 전부. 결제 목록과 갈라 둔다 — 답 하나를 눌러도 목록을 다시 안 받는다. */
+  verdicts: (userId: number) => get<Record<string, Verdict>>(`/api/verdict?userId=${userId}`),
+  /** 답을 적는다. `waste` 를 빼면 지운다 — 되돌릴 길이 없으면 사람은 애초에 안 누른다. */
+  setVerdict: (userId: number, paymentId: string, waste: boolean | null) =>
+    post<{ paymentId: string; waste: boolean | string }>(
+      '/api/verdict', { userId, paymentId, waste }),
+  /** 이번 주/달에 붙인 라벨 요약 — 0828 이 또래 비교 자리를 여기에 내줬다. */
+  labelSummary: (userId: number, period: 'week' | 'month' = 'week', offset = 0) =>
+    get<LabelSummary>(`/api/report/labels?userId=${userId}&period=${period}&offset=${offset}`),
   /**
    * <b>그 기간에 얼마를 썼는가</b> — 챌린지와 무관하다.
    *

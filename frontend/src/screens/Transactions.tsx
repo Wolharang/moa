@@ -5,6 +5,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppBar, Scroll, Screen, ErrorBox, Loading, Empty } from '../components/ui';
+import { VerdictChips, type Verdict } from '../components/VerdictChips';
 import { useSession } from '../state/session';
 import { useGuardian } from '../state/guardian';
 import { autoSyncMyData, POLL_MS } from '../state/autoSync';
@@ -144,6 +145,21 @@ export function Transactions() {
   }, [an.data]);
 
   /** 사용자가 확정한다 — **이 한 번이 사전에 쌓여 다음부터 안 묻는다.** */
+  /**
+   * 결제별로 사람이 붙인 답 (프로토타입_0828 `.sp-card .ctx3`).
+   *
+   * <p>홈과 같은 것을 본다 — 홈에서 답한 것이 여기 딱지로 떠 있어야 두 번 묻지 않는다.
+   * 누른 즉시 화면을 먼저 바꾸고 서버에 보낸다. 못 보내도 되돌리지 않는다 — 방금 누른 것이
+   * 사라지는 편이 더 놀랍고, 다음에 열 때 다시 물으면 된다.
+   */
+  const saidRemote = useAsync(() => api.verdicts(userId).catch(() => ({})), [userId]);
+  const [saidLocal, setSaidLocal] = useState<Record<string, Verdict>>({});
+  const said: Record<string, Verdict> = { ...(saidRemote.data ?? {}), ...saidLocal };
+  async function answer(paymentId: string, v: Verdict) {
+    setSaidLocal((prev) => ({ ...prev, [paymentId]: v }));
+    await api.setVerdict(userId, paymentId, v === 'WASTE').catch(() => undefined);
+  }
+
   async function confirmCategory(paymentId: string, category2: string) {
     setFixed((prev) => ({ ...prev, [paymentId]: category2 }));
     setEditing(null);
@@ -411,6 +427,11 @@ export function Transactions() {
                           ? highlight(shownName(p)!, (query ?? '').trim())
                           : catLabel(p.category2 ?? p.category)}
                       </span>
+                      {/* 답을 붙였으면 딱지로 붙는다 — 누르면 다시 고칠 수 있다. */}
+                      {said[p.paymentId] && (
+                        <VerdictChips value={said[p.paymentId]}
+                          onPick={(v) => void answer(p.paymentId, v)} />
+                      )}
                     </b>
                     <span className="sub">
                       {/* **카드사만 적는다.** 상품명(`신한 Deep Dream`)은 13자를 먹는데
@@ -512,6 +533,11 @@ export function Transactions() {
                         글자색으로 남아 어느 카드인지는 그대로 보인다. */}
                     <span className="amt">{won(p.amount)}</span>
                   </div>
+                  {/* 아직 답이 없는 결제에만 칩 줄이 선다(프로토타입_0828 `.sp-card .ctx3`).
+                      답하면 접히고 이름 옆 딱지로 옮겨간다. */}
+                  {!said[p.paymentId] && p.amount > 0 && (
+                    <VerdictChips onPick={(v) => void answer(p.paymentId, v)} />
+                  )}
                   {editing === p.paymentId && (
                     <div style={{ padding: '6px 0 10px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                       {p.category2Llm && (

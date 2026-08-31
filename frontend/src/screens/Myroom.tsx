@@ -335,7 +335,9 @@ export function Myroom() {
           </div>
           <div className="day-gauge">
             <div className="lbl">
-              <span>{home.strip.noSpendStreak > 0 ? '오늘 무지출 진행 중' : home.challenge.categoryLabel}</span>
+              <span>{/* <b>'무지출'은 사실이 아니다</b>(0828 정정). 챌린지에 걸린 카테고리에서 안 썼다는
+                  뜻이지 아무것도 안 썼다는 뜻이 아니다 — 밥을 먹고도 '무지출'이라 뜨면 앱을 못 믿는다. */}
+              {home.strip.noSpendStreak > 0 ? '오늘 챌린지 지출 0원 유지 중' : home.challenge.categoryLabel}</span>
               <span>{home.strip.remainingCapLabel}</span>
             </div>
             <div className="gbar">

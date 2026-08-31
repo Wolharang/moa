@@ -7,7 +7,7 @@
  * <b>주간·월간 두 갈래</b>이고, 갈래마다 보여주는 것이 다르다 —
  *
  * <pre>
- *   공통   기간 고르기 · 진행 히어로 · 도넛과 순위 · 또래 비교 · 카드 추천
+ *   공통   기간 고르기 · 진행 히어로 · 도넛과 순위 · 내가 붙인 라벨 · 카드 추천
  *   주간   요일별/주별 차트 · 지킴이가 본 이번 주 · 미션 다리
  *   월간   최근 3개월 선 그래프 · 가장 많이 간 곳 캐러셀 · 1년 뒤 지킨 돈
  * </pre>
@@ -16,11 +16,18 @@
  * 묻는다. 물음이 다르면 보여줄 것도 다른데, 한 화면에 다 얹으면 스크롤만 길어지고 어느 것도
  * 안 읽힌다.
  *
- * <h2>또래 비교는 서버가 만든다</h2>
+ * <h2>또래 비교를 걷어냈다 (프로토타입_0828)</h2>
  *
- * <p>같은 나이대의 <b>중앙값</b>과 견준다({@code /api/report/peer}). 견줄 수 없으면 서버가
- * 204 를 주고 이 절은 <b>통째로 사라진다</b> — 표본이 얇을 때 억지로 숫자를 만들면 없는
- * 비교를 사실처럼 보여주게 된다. 왜 평균이 아니라 중앙값인지는 `PeerCompareService` 에 있다.
+ * <p>같은 나이대의 중앙값과 견주는 절이 있었다. 0828 이 그것을 지우고 <b>내가 붙인 라벨
+ * 요약</b>을 그 자리에 넣었다. 원본이 이유를 한 줄로 적어 뒀다 —
+ * <i>"또래 비교 제거 — 남과 비교하지 않는 톤 원칙"</i>.
+ *
+ * <p>거들 이유가 하나 더 있다. 또래의 중앙값은 <b>보고 나서 할 수 있는 일이 없다</b>.
+ * 적게 썼으면 안심하고 많이 썼으면 기분이 나쁠 뿐, 다음 주에 무엇을 바꿀지로 이어지지
+ * 않는다. 내가 붙인 라벨은 내가 방금 한 판단이라 곧바로 다음 걸음이 된다.
+ *
+ * <p>서버의 {@code /api/report/peer} 와 `PeerCompareService` 는 <b>지우지 않고 남겼다</b> —
+ * 부르는 화면이 없어졌을 뿐이다. 되살릴 일이 생기면 이 절만 되돌리면 된다.
  *
  * <h2>계산은 서버가 한다</h2>
  *
@@ -35,7 +42,7 @@ import { WeekPicker, weekOfMonth, mondayOf, type WeekSel } from '../components/W
 import { useSession } from '../state/session';
 import { useGuardian } from '../state/guardian';
 import { useAsync } from '../state/useAsync';
-import { api, type DayPoint } from '../lib/api';
+import { api, type DayPoint, catLabel } from '../lib/api';
 import { won, wonNum, shortDate, iconOf } from '../lib/format';
 
 /** "7.20 ~ 7.26" */
@@ -159,15 +166,41 @@ export function Report() {
     () => api.periodSpend(userId, period, period === 'week' ? weeksAgo : 0).catch(() => null),
     [userId, period, weeksAgo],
   );
-  /** 또래 비교 — 204 면 `null` 이고 그 절은 안 그린다. */
-  const peer = useAsync(() => api.peerCompare(userId, period === 'week' ? 7 : 30)
-    .catch(() => null), [userId, period]);
+  /**
+   * 내가 붙인 라벨 요약 (프로토타입_0828).
+   *
+   * <p><b>또래 비교를 걷어낸 자리다.</b> 또래의 중앙값은 남의 이야기라 보고 나서 할 수 있는
+   * 일이 없는데, 내가 붙인 라벨은 내가 방금 한 판단이라 다음 주로 이어진다.
+   */
+  const labels = useAsync(
+    () => api.labelSummary(userId, period, period === 'week' ? weeksAgo : 0).catch(() => null),
+    [userId, period, weeksAgo],
+  );
   /** 월간 캐러셀이 쓸 결제 — 가맹점 빈도·최대액·연속 주를 여기서 센다. */
   const payments = useAsync(() => (period === 'month'
     ? api.allPayments(userId, 3).catch(() => []) : Promise.resolve([])), [userId, period]);
 
   const w = weekly.data;
   const ch = home?.challenge;
+  /**
+   * 성역으로 고른 칸과 그 달 지출 — 지킴이가 아는 목록에 구간 지출을 맞춰 본다.
+   *
+   * <p>두 값을 여기서 곱하거나 다시 세지 않는다. 목록은 챌린지가 갖고 금액은 구간 지출이
+   * 갖는 것을, 코드로 이어 붙이기만 한다(원칙 2).
+   */
+  const sanctRows = (() => {
+    const keys = new Set(ch?.sanctuaryCategories ?? []);
+    if (keys.size === 0) return [];
+    return (spend.data?.byCategory ?? [])
+      .filter((c) => keys.has(c.code))
+      .map((c) => ({ code: c.code, name: c.name, amount: c.amount }));
+  })();
+  const sanctTotal = sanctRows.reduce((a, r) => a + r.amount, 0);
+
+  /** 두 갈래의 합. 0 이면 아직 아무것도 안 붙인 것이라 빈 안내를 띄운다. */
+  const labelTotal = (labels.data?.fine.amount ?? 0) + (labels.data?.leak.amount ?? 0);
+  /** 이번 구간인지 지난 구간인지 — 제목의 첫 낱말이 달라진다. */
+  const curLabel = period === 'month' ? '이번 달' : weeksAgo === 0 ? '이번 주' : '이 주';
   const isCur = weeksAgo === 0;
   /**
    * 지킴이가 아직 안 왔을 뿐인데 본문을 띄우면 <b>있는 챌린지를 없다고 말하는 것</b>이다.
@@ -499,29 +532,82 @@ export function Report() {
             )}
             <div className="rp-band" />
 
-            {/* ── ④ 또래 비교 — 견줄 수 없으면 절이 통째로 사라진다 ──── */}
-            {peer.data && (
+            {/* ── ④ 내가 붙인 라벨 (프로토타입_0828) ──────────────────
+                <b>또래 비교를 걷어낸 자리다.</b> 또래의 중앙값은 남의 이야기라 그것을 보고
+                내가 할 수 있는 일이 없다. 내가 이번 주에 붙인 라벨은 <b>내가 방금 한
+                판단</b>이라 다음 주에 무엇을 바꿀지로 이어진다. */}
+            {period === 'week' && labels.data && (
+              <>
+                <div className="rp-sec">
+                  {labelTotal > 0 ? (
+                    <>
+                      <div className="rph2">
+                        {curLabel} 새는 돈 <em>{labels.data.leak.count}건, {wonNum(labels.data.leak.amount)}원</em>
+                      </div>
+                      {/* 두 갈래의 비율. 금액 기준이라 건수가 적어도 큰 결제가 크게 보인다. */}
+                      <div className="lbl-bar">
+                        <i className="need" style={{ width: `${Math.round(labels.data.fine.amount / labelTotal * 100)}%` }} />
+                        <i className="leak" style={{ width: `${Math.round(labels.data.leak.amount / labelTotal * 100)}%` }} />
+                      </div>
+                      <div className="lbl-rows">
+                        <div className="lbl-row">
+                          <i style={{ background: '#D1D6DB' }} />필요했어요
+                          <span>{labels.data.fine.count}건</span><b>{wonNum(labels.data.fine.amount)}원</b>
+                        </div>
+                        <div className="lbl-row">
+                          <i style={{ background: 'var(--amber)' }} />새는 돈이었어요
+                          <span>{labels.data.leak.count}건</span><b>{wonNum(labels.data.leak.amount)}원</b>
+                        </div>
+                        {labels.data.unlabeled > 0 && (
+                          <div className="lbl-row">
+                            <i style={{ background: '#fff', border: '1px solid var(--line)' }} />아직 안 붙임
+                            <span>{labels.data.unlabeled}건</span>
+                          </div>
+                        )}
+                      </div>
+                      {/* 어디에 몰렸는지는 서버가 센다 — 화면이 다시 세면 두 곳이 갈린다. */}
+                      {labels.data.leak.count > 0 && labels.data.leakTop && (
+                        <p className="pv" style={{ margin: '10px 0 0' }}>
+                          새는 돈은 {labels.data.leakTop}에 몰려 있어요.
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="rph2">{curLabel} 붙인 라벨이<br />아직 없어요</div>
+                      <div className="lbl-emp">
+                        홈 최근 지출에서 라벨을 붙이면 여기서 새는 돈이 정리돼요
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="rp-band" />
+              </>
+            )}
+
+            {/* ── ④-월 지킴이가 손대지 않은 소비 (프로토타입_0828) ────────
+                성역은 챌린지에서 통째로 빠진 칸이다. 빠졌다는 사실만 알리고 <b>얼마인지는
+                안 보여 주면</b>, 사람은 자기가 무엇을 지키기로 했는지 잊는다. 달마다 한 번
+                그 값을 마주하는 자리다 — 줄이라고 권하지 않고 적어 두기만 한다. */}
+            {period === 'month' && sanctRows.length > 0 && (
               <>
                 <div className="rp-sec">
                   <div className="rph2">
-                    또래보다 <b>{peer.data.mine <= peer.data.peer ? '적게' : '많이'}</b> 썼어요
+                    지킴이가 손대지 않은 소비<br /><em>{wonNum(sanctTotal)}원</em>
                   </div>
-                  <div className="peer">
-                    <div className="pcol">
-                      <div className="pbar gray" style={{ height: barH(peer.data.peer, peer.data) }} />
-                      <b className="gray">{wonNum(peer.data.peer)}</b>
-                      <span>또래</span>
-                    </div>
-                    <div className="pcol">
-                      <div className="pbar green" style={{ height: barH(peer.data.mine, peer.data) }} />
-                      <b className="green">{wonNum(peer.data.mine)}</b>
-                      <span>나</span>
-                    </div>
-                  </div>
-                  <p className="pv" style={{ textAlign: 'center', margin: '8px 0 0' }}>
-                    {peer.data.ageFrom}~{peer.data.ageTo}년생 {peer.data.sampleSize}명의 <b>중앙값</b>이에요
-                    · 최근 {peer.data.days}일
+                  <p className="sanct-sub">
+                    포기할 수 없다고 고른 곳이에요. 챌린지 계산에서 빠져 있어요.
                   </p>
+                  {sanctRows.map((r) => {
+                    const { icon, bg } = iconOf(r.code);
+                    return (
+                      <div className="list-item" key={r.code} style={{ padding: '12px 0' }}>
+                        <span className="ic" style={{ background: bg }}><Icon id={icon} /></span>
+                        <div className="tx"><b>{catLabel(r.code, r.name)}</b></div>
+                        <span className="amt">{wonNum(r.amount)}원</span>
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="rp-band" />
               </>
@@ -602,12 +688,6 @@ export function Report() {
       )}
     </Screen>
   );
-}
-
-/** 또래 막대 높이 — 큰 쪽을 120px 로 두고 비례로 줄인다. 0이어도 8px 는 남긴다. */
-function barH(v: number, p: { mine: number; peer: number }) {
-  const max = Math.max(p.mine, p.peer, 1);
-  return `${Math.max(8, Math.round((v / max) * 120))}px`;
 }
 
 /** 지금 보고 있는 주(= N주 전)를 휠의 (연,월,주)로. */
