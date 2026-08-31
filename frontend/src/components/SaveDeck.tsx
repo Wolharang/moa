@@ -211,7 +211,10 @@ export function SaveDeck({ items, picks, onPick, onUndo }: {
           {showHint && <div className={`dk-hint${hintIn ? ' in' : ''}`}>카드를 좌우로 넘겨 선택해요</div>}
 
           <div className="dk-meta">
-            <span className="tg" style={{ background: bg }}>{catLabel(card.categoryCode, card.categoryCode)}</span>
+            {/* 소분류를 못 푼 항목은 이름이 곧 중분류다 — 같은 말을 두 번 적지 않는다. */}
+            {card.sub !== card.categoryCode && (
+              <span className="tg" style={{ background: bg }}>{catLabel(card.categoryCode, card.categoryCode)}</span>
+            )}
             <span className="tg time">{card.count}번 결제</span>
             <span className="dk-ic" style={{ background: bg }}><svg><use href={`#${icon}`} /></svg></span>
           </div>

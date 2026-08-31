@@ -427,11 +427,6 @@ export function Transactions() {
                           ? highlight(shownName(p)!, (query ?? '').trim())
                           : catLabel(p.category2 ?? p.category)}
                       </span>
-                      {/* 답을 붙였으면 딱지로 붙는다 — 누르면 다시 고칠 수 있다. */}
-                      {said[p.paymentId] && (
-                        <VerdictChips value={said[p.paymentId]}
-                          onPick={(v) => void answer(p.paymentId, v)} />
-                      )}
                     </b>
                     <span className="sub">
                       {/* **카드사만 적는다.** 상품명(`신한 Deep Dream`)은 13자를 먹는데
@@ -500,6 +495,13 @@ export function Transactions() {
                       })()}
                       {/* 성역·고정지출은 표시해 준다 — 왜 이 결제가 챌린지에서 빠지는지
                           목록에서 바로 보여야 사용자가 판정을 의심하지 않는다. */}
+                      {/* <b>답 딱지는 보조줄에 둔다.</b> 이름 줄에 두었더니 터치 크기(44px)가
+                          20px 짜리 이름 줄을 부풀려 상호가 잘렸다(실측 2026-08-31).
+                          성역·고정 딱지가 이미 이 줄에 있고, 이 줄이 그 높이를 받아낸다. */}
+                      {said[p.paymentId] && (
+                        <VerdictChips value={said[p.paymentId]}
+                          onPick={(v) => void answer(p.paymentId, v)} />
+                      )}
                       {p.category && sanctuary.has(p.category) && <span className="sp-tag tag-sanct">성역</span>}
                       {fixedOf(p) && <span className="sp-tag tag-fixed">고정</span>}
                       {/* **결제 경로는 줄에 적지 않는다.** 이름 자리에 이미 결제대행사가 떠

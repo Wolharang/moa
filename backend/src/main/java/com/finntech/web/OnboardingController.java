@@ -216,6 +216,13 @@ public class OnboardingController {
                     String byBrand = industryMapper.subOfBrand((String) r.get("brand"));
                     if (byBrand != null && !byBrand.isBlank()) sub = byBrand;
                 }
+                /*
+                 * 여기까지 못 풀면 <b>중분류로 떨어진다</b>({@link SaveItemSelector}).
+                 *
+                 * 업종코드로 한 번 더 보는 길도 만들어 뒀지만({@code subOfIndustryCode}) 결제
+                 * 행에 업종코드가 안 실려 있어 지금은 못 쓴다. 그 칸을 내리는 것은 결제 행을
+                 * 넓히는 일이라 따로 다룬다 — 지금은 중분류 폴백이 그 자리를 메운다.
+                 */
                 window.add(new SaveItemSelector.Payment(
                         sub, category2, ((Number) r.get("amount")).longValue(),
                         (Boolean) r.get("waste"), (String) r.get("reason")));

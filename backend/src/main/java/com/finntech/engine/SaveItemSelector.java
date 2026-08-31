@@ -83,12 +83,23 @@ public final class SaveItemSelector {
                                             ToDoubleFunction<String> discretionary) {
         Map<String, List<Payment>> bySub = new TreeMap<>();
         for (Payment p : window) {
-            // 소분류를 못 풀었으면 고를 수 없다 — "그 밖의 식비를 줄이세요"는 행동이 안 된다.
-            if (p.sub() == null || p.sub().isBlank()) continue;
             if (IndustryCategoryMapper.isUnknown(p.category2())) continue;
             // 재량성이 낮으면 줄이라고 권하지 않는다. 중분류가 정하는 성질이다.
             if (discretionary.applyAsDouble(p.category2()) < cfg.getProtectedBelow()) continue;
-            bySub.computeIfAbsent(p.sub().trim(), k -> new ArrayList<>()).add(p);
+            /*
+             * <b>소분류를 못 풀면 중분류로 묶는다.</b>
+             *
+             * 처음에는 소분류가 없는 결제를 버렸다. 소분류가 더 좋은 단위인 것은 맞지만
+             * — `식비` 로는 "밥을 포기할 수 없다"밖에 못 말한다 — 소분류는 <b>사전에 있는
+             * 가맹점에만</b> 붙는다. 사전에는 사람이 확인한 곳만 들어가므로 대부분의 결제가
+             * 거기 없고, 그래서 <b>아껴볼 항목이 하나도 안 나와 챌린지를 시작할 수 없었다</b>
+             * (실측 2026-08-31, 창 안 420만원인 사용자에게 항목 0개).
+             *
+             * 거친 단위라도 고를 수 있는 편이, 정확한 단위로 아무것도 못 고르는 것보다 낫다.
+             * 아는 만큼 잘게 쪼개고, 모르면 한 칸 올린다.
+             */
+            String key = (p.sub() == null || p.sub().isBlank()) ? p.category2().trim() : p.sub().trim();
+            bySub.computeIfAbsent(key, k -> new ArrayList<>()).add(p);
         }
 
         List<SaveItem> out = new ArrayList<>();
