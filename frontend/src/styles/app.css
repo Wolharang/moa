@@ -926,6 +926,11 @@ button.card, button.pt-card, button.fut-card, button.tip-card, button.exp-bn{
   cursor:pointer;
   font-family:inherit;
   transition:.15s;
+  /* <b>터치 타깃 44px 는 지키되 글자는 한 줄로.</b> `새는 돈이었어요` 여덟 자가 안쪽 폭에
+     안 들어가 두 줄로 접히면서 줄이 깨져 보였다(실측 2026-08-31). `min-height` 가
+     `height` 를 이기므로 높이는 어차피 44px 이고, 여기서 막을 것은 <b>줄바꿈</b>이다. */
+  white-space:nowrap;
+  flex:0 0 auto;
   min-height:44px;
 }
 .ctx3 button.on{
@@ -954,16 +959,6 @@ button.sp-tag{min-height:44px;padding:0 8px;margin:-14px 0 -14px 8px;}
 /* 사람이 붙인 답 딱지 (프로토타입_0828 `.tag-ctx`). 눌러서 다시 고칠 수 있으므로 버튼이다. */
 .tag-ctx{background:#F1F3F5;color:var(--t3);cursor:pointer;border:none;font-family:inherit;}
 
-/* ---- 결제에 답 붙이는 칩 (프로토타입_0828 `.ctx3`) ----
-   누르면 위로 접히며 사라지고, 이름 옆 딱지로 옮겨간다. 답한 줄과 안 한 줄이 같은 높이로
-   남아 있으면 어디까지 했는지가 안 보인다. */
-.ctx3{display:flex;gap:8px;margin:0 0 8px 60px;flex-wrap:wrap;align-items:center;
-  max-height:32px;transition:max-height .3s ease, opacity .25s ease, margin-bottom .3s ease;}
-.ctx3.fold{overflow:hidden;max-height:0;opacity:0;margin-bottom:0;}
-.ctx3 button{position:relative;border:1px solid var(--line);background:#fff;border-radius:20px;
-  height:24px;min-width:60px;padding:4px 8px;font-size:12px;font-weight:500;color:var(--t2);
-  cursor:pointer;font-family:inherit;transition:.15s;}
-.ctx3 button.on{background:var(--t1);color:#fff;border-color:var(--t1);}
 /* 4.64:1 */
 .tag-fixed{
   background:var(--track);
@@ -4379,6 +4374,12 @@ button.list-item:active{ opacity: .6; }
 #s-ob /* 겹친 레이어는 터치를 통과시키고, #s-ob 활성 콘텐츠만 수신 */
 .chart-box .cwrap{pointer-events:auto;}
 #s-ob .chart-box.exit .cwrap{pointer-events:none;}
+/* <b>지나간 무대는 클릭을 통과시킨다.</b> 무대들은 `inset:0` 으로 겹쳐 있고 숨을 때
+   `opacity:0` 만 되므로, 자리는 그대로 남아 위에서 손짓을 가로챈다 — 3단계에서 카드를
+   끌면 2단계 목록(`.sv-row`)이 대신 잡혀 <b>드래그가 통째로 안 먹었다</b>(실측 2026-08-31).
+   `.in` 이 아닌 무대는 안쪽까지 확실히 끈다. */
+#s-ob .saves-wrap, #s-ob .deck-wrap, #s-ob .goal{pointer-events:none;}
+#s-ob .saves-wrap:not(.in) *, #s-ob .deck-wrap:not(.in) *, #s-ob .goal:not(.in) *{pointer-events:none;}
 #s-ob .saves-wrap.in, #s-ob .deck-wrap.in, #s-ob .goal.in{pointer-events:auto;}
 #s-ob .cwrap{width:100%;padding:0 24px;}
 #s-ob /* 히어로 — 1단계에선 자리만 차지하고 보이지 않는다 (레이아웃 시프트 0) */
