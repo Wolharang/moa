@@ -19,7 +19,7 @@
 #   · 설정  : 그 검사들을 required 로 지정 + PR 없는 직접 push 금지
 set -euo pipefail
 
-REPO="${REPO:-KernelAcademy-AICamp/ai-camp-8th-main-project-1team}"
+REPO="${REPO:-Wolharang/moa}"
 API="https://api.github.com"
 TOKEN="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
 
