@@ -511,44 +511,116 @@ cd frontend && npm run build       # CSS 토큰 · 명도대비 · 접근성 · 
 
 ## 결과물
 
-### 중간 데모 (2026-08-07)
+실제 서비스(`moaa.kro.kr`)를 **휴대폰 크기(360×780)** 로 열어 찍었습니다. 시연 인물
+**김하영**(27, 마케팅 2년차)의 신원으로 로그인해, 처음 앱을 여는 순간부터 챌린지를 만들고
+소비를 되돌아보기까지를 그대로 담았습니다.
 
-<!-- 영상을 올린 뒤 아래 주석을 풀고 링크만 바꿉니다.
-     · 유튜브: 썸네일 이미지에 영상 링크를 겁니다(GitHub 은 iframe 을 막습니다)
-     · 파일 직접: docs/demo/ 에 mp4 를 두고 <video> 대신 링크로 겁니다(용량 100MB 제한) -->
-
-<!-- [![중간 데모](https://img.youtube.com/vi/VIDEO_ID/0.jpg)](https://youtu.be/VIDEO_ID) -->
-
-| 항목 | 내용 |
-| --- | --- |
-| 영상 | (추가 예정) |
-| 발표 자료 | (추가 예정) |
-| 다루는 범위 | (추가 예정) |
-
-<details>
-<summary>시연 순서</summary>
+<details open>
+<summary><b>온보딩</b> — 앱을 처음 여는 순간부터 첫 챌린지까지</summary>
 <div markdown="1">
 
-1. (추가 예정)
+앱을 열면 소개 한 장이 뜨고, 본인인증과 자산 연결을 지나 **네 걸음**으로 이번 챌린지를 정합니다.
+분석은 서버가 하고 고르는 것은 사람이 합니다.
+
+<img src="./readme-asset/image/gif/01-워크스루.gif" width="200px" />
+<img src="./readme-asset/image/gif/02-본인인증.gif" width="200px" />
+<img src="./readme-asset/image/gif/03-개인정보동의.gif" width="200px" />
+<img src="./readme-asset/image/gif/04-휴대폰인증.gif" width="200px" />
+<img src="./readme-asset/image/gif/05-자산연결.gif" width="200px" />
+<img src="./readme-asset/image/gif/06-통합인증.gif" width="200px" />
+<img src="./readme-asset/image/gif/07-카드사연결.gif" width="200px" />
+<img src="./readme-asset/image/gif/08-소비분석중.gif" width="200px" />
+
+| | |
+| --- | --- |
+| 워크스루 | 무엇을 해주는 서비스인지 한 장으로 |
+| 본인인증 | 이름 → 주민등록번호 앞 7자리 → 통신사 → 휴대폰 번호 |
+| 개인정보 동의 | 필수 셋과 선택 하나를 나눠 보여주고, 각 항목을 눌러 원문을 읽을 수 있습니다 |
+| 휴대폰 인증 | 문자로 받은 여섯 자리 |
+| 자산 연결 | 통합인증으로 보유 기관을 찾고, 카드 이용내역 전송을 요구합니다 |
+| 소비 분석 | 불러온 결제를 카테고리로 나누고 낭비 여부를 판정합니다 |
 
 </div>
 </details>
 
-### 최종 발표 (2026-08-31)
-
-<!-- [![최종 발표](https://img.youtube.com/vi/VIDEO_ID/0.jpg)](https://youtu.be/VIDEO_ID) -->
-
-| 항목 | 내용 |
-| --- | --- |
-| 영상 | (추가 예정) |
-| 발표 자료 | (추가 예정) |
-| 중간 데모 이후 달라진 점 | (추가 예정) |
-
-<details>
-<summary>시연 순서</summary>
+<details open>
+<summary><b>이번 챌린지 정하기</b> — 화면 하나에서 네 걸음</summary>
 <div markdown="1">
 
-1. (추가 예정)
+화면이 바뀌지 않고 **말풍선이 쌓이고 무대만 바뀝니다.** 지나온 걸음이 위에 접힌 채 남아 있어
+"여기가 어디였지"를 다시 세울 일이 없습니다.
+
+<img src="./readme-asset/image/gif/09-온보딩-소비분석.gif" width="200px" />
+<img src="./readme-asset/image/gif/10-온보딩-소비분류.gif" width="200px" />
+<img src="./readme-asset/image/gif/11-온보딩-목표.gif" width="200px" />
+<img src="./readme-asset/image/gif/12-온보딩완료.gif" width="200px" />
+
+| 걸음 | 무엇을 |
+| --- | --- |
+| 1 · 지난 소비를 분석했어요 | 한 달 소비를 한 줄 막대로. 고를 것이 없는 브리핑이라 스스로 넘어갑니다 |
+| 2 · 아껴볼 수 있겠네요 | 서버가 고른 항목을 **소분류 단위**로 보여줍니다 — `배달`·`택시`처럼 줄일 수 있는 대상입니다 |
+| 3 · 포기할 수 없는 소비와 줄여볼 소비 | 카드를 **왼쪽으로 넘기면 지키고 오른쪽으로 넘기면 줄입니다.** 버튼도 함께 있습니다 |
+| 4 · 챌린지 목표를 세워봐요 | 슬라이더로 한 번에, 스테퍼로 항목마다 금액을 정합니다 |
+
+포기할 수 없다고 고른 소비는 챌린지 계산에서 **완전히 빠집니다.**
 
 </div>
 </details>
+
+<details open>
+<summary><b>메인 페이지</b></summary>
+<div markdown="1">
+
+<img src="./readme-asset/image/gif/13-홈.gif" width="200px" />
+<img src="./readme-asset/image/gif/14-소비에-라벨붙이기.gif" width="200px" />
+
+'이번 달 **지키는 중**'이라고 적습니다 — 월말 정산 전까지 이 숫자는 내려갈 수 있고, 지킨 줄
+알았던 돈이 줄면 앱을 믿을 수 없게 됩니다.
+
+최근 지출에는 `필요했어요` / `새는 돈이었어요` 를 붙일 수 있습니다. 누르면 그 줄이 접히고
+이름 옆 딱지로 옮겨가, 아직 답하지 않은 것만 눈에 남습니다. 딱지를 누르면 다시 고칩니다.
+
+</div>
+</details>
+
+<details open>
+<summary><b>리포트</b></summary>
+<div markdown="1">
+
+<img src="./readme-asset/image/gif/15-리포트-주간.gif" width="200px" />
+<img src="./readme-asset/image/gif/16-리포트-월간.gif" width="200px" />
+
+주간은 "이번 주를 지켰는가", 월간은 "어떤 사람인가"를 묻습니다. 물음이 다르면 보여줄 것도
+다릅니다.
+
+**또래와 비교하지 않습니다.** 또래의 중앙값은 보고 나서 할 수 있는 일이 없습니다. 그 자리에는
+내가 이번 주에 붙인 라벨이 정리돼 들어갑니다 — 내가 방금 한 판단이라 다음 주로 이어집니다.
+
+</div>
+</details>
+
+<details open>
+<summary><b>기타 페이지</b></summary>
+<div markdown="1">
+
+<img src="./readme-asset/image/gif/17-소비내역.gif" width="200px" />
+<img src="./readme-asset/image/gif/18-마이.gif" width="200px" />
+<img src="./readme-asset/image/gif/19-마이룸.gif" width="200px" />
+
+| | |
+| --- | --- |
+| 소비 내역 | 날짜로 묶어 보여주고, 달력·검색으로 찾습니다. 분류가 틀렸으면 그 자리에서 고칩니다 |
+| 마이 | 챌린지 관리 · 목표 · 성역 · 연결 관리 |
+| 마이룸 | 지켜낸 하루가 소품으로 쌓입니다 |
+
+</div>
+</details>
+
+---
+
+### 발표
+
+| 항목 | 중간 데모 (2026-08-07) | 최종 발표 (2026-08-31) |
+| --- | --- | --- |
+| 영상 | (추가 예정) | (추가 예정) |
+| 발표 자료 | (추가 예정) | (추가 예정) |
