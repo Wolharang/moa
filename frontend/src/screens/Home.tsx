@@ -355,16 +355,17 @@ export function Home() {
                   <div className="list-item" style={{ padding: '12px 0' }}>
                     <span className="ic" style={{ background: bg }}><Icon id={icon} /></span>
                     <div className="tx">
-                      <b>{name}</b>
-                      {/* <b>답 딱지는 보조줄에 둔다.</b> 이름 줄에 두었더니 터치 크기(44px)가
-                          20px 짜리 이름 줄을 부풀려 상호가 잘렸다(실측 2026-08-31). */}
-                      <span>
-                        {shortDate(p.date)} · {p.category2 ?? p.category}
+                      {/* <b>답 딱지는 이름 옆에</b>(원본 `ctxEdit` 과 같은 자리). 딱지가
+                          20px 이라 이름 줄을 안 부풀린다 — 44px 을 칠하던 시절에는 상호가
+                          위아래로 잘렸다(실측 2026-08-31). */}
+                      <b>
+                        {name}
                         {said[p.paymentId] && (
                           <VerdictChips value={said[p.paymentId]}
                             onPick={(v) => void answer(p.paymentId, v)} />
                         )}
-                      </span>
+                      </b>
+                      <span>{shortDate(p.date)} · {p.category2 ?? p.category}</span>
                     </div>
                     <span className="amt">-{won(p.amount)}</span>
                   </div>
