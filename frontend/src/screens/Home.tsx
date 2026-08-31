@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { Icon } from '../components/Icons';
 import { MonthEndModal } from '../components/MonthEndModal';
 import { Orb, Scroll, Screen, ErrorBox, Loading, SectionTitle } from '../components/ui';
+import { VerdictChips, type Verdict } from '../components/VerdictChips';
 import { useSession } from '../state/session';
 import { useGuardian } from '../state/guardian';
 import { useAsync } from '../state/useAsync';
@@ -38,6 +39,21 @@ export function Home() {
   const [celebrate, setCelebrate] = useState(false);
 
   const recent = [...(payments.data ?? [])].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+
+  /**
+   * 결제별로 사람이 붙인 답 (프로토타입_0828 `.ctx3`).
+   *
+   * <p>결제 목록과 갈라 받는다 — 답 하나를 눌렀다고 결제 전체를 다시 받을 이유가 없다.
+   * 누른 즉시 화면을 먼저 바꾸고(낙관적) 서버에 보낸다. 못 보내도 화면은 안 되돌린다 —
+   * 다음에 열 때 다시 물어보면 되고, 되돌아가면 방금 누른 것이 사라져 더 놀랍다.
+   */
+  const saidRemote = useAsync(() => api.verdicts(userId).catch(() => ({})), [userId]);
+  const [saidLocal, setSaidLocal] = useState<Record<string, Verdict>>({});
+  const said: Record<string, Verdict> = { ...(saidRemote.data ?? {}), ...saidLocal };
+  async function answer(paymentId: string, v: Verdict) {
+    setSaidLocal((prev) => ({ ...prev, [paymentId]: v }));
+    await api.setVerdict(userId, paymentId, v === 'WASTE').catch(() => undefined);
+  }
 
   if (loading && !home) {
     return (
@@ -186,7 +202,9 @@ export function Home() {
               D-day 로 옆에 둔다. */}
           <div className="hero">
             <div className="hero-top">
-              <div className="cap">이번 달 지킨 돈</div>
+              {/* <b>'지킨 돈'이 아니라 '지키는 중'이다</b>(0828 정정). 월말 정산 전까지 이
+                  숫자는 내려갈 수 있다 — 지킨 줄 알았던 돈이 줄면 사용자는 앱을 못 믿는다. */}
+              <div className="cap">이번 달 지키는 중</div>
               <div className="dday">{ch.daysLeft > 0 ? `D-${ch.daysLeft}` : '마지막 날'}</div>
             </div>
             <div className="hero-mid">
@@ -230,9 +248,19 @@ export function Home() {
           {/* 지킴이 한마디 — 0818 에서 히어로 안의 꼬리말이 아니라 <b>독립 카드</b>가 됐다.
               히어로는 숫자를 말하는 자리고 이건 사람에게 거는 말이라, 같은 상자에 있으면
               둘 다 흐려진다. */}
+          {/* <b>이 줄이 무엇인지 이름을 붙인다</b>(0828 `오늘의 행동`). 이름이 없으면 그냥
+              지나가는 인사말로 읽혀서, 정작 오늘 할 일이 적혀 있어도 안 읽힌다.
+
+              원본은 카드를 눌러 소비내역·마이룸으로 보내는데, 그건 프로토타입이 문장을
+              세 갈래로 <b>직접 만들기 때문</b>이다. 우리 문장은 서버가 만들고 어디로 가야
+              하는지는 안 말해 준다 — 갈 곳을 우리가 지어내면 누른 사람이 엉뚱한 데로 간다.
+              누를 것이 있는 경우(분류 확인)는 아래 줄이 이미 따로 맡고 있다. */}
           <div className="tip-card">
             <Icon id="i-cat" className="cat" size={20} />
-            <span>{tipLine}</span>
+            <div className="tip-tx">
+              <small>오늘의 행동</small>
+              <span>{tipLine}</span>
+            </div>
           </div>
 
           {/* 마이룸 진입 카드 (프로토타입_0818 `.strip` + `.mr-tx`/`.mr-art`).
@@ -323,13 +351,27 @@ export function Home() {
               const name = p.displayName ?? p.brand ?? p.merchantName ?? p.category2 ?? p.category;
               const { icon, bg } = iconOf(p.category2 ?? p.category);
               return (
-                <div className="list-item" key={p.paymentId} style={{ padding: '12px 0', borderBottom: '1px solid var(--bg)' }}>
-                  <span className="ic" style={{ background: bg }}><Icon id={icon} /></span>
-                  <div className="tx">
-                    <b>{name}</b>
-                    <span>{shortDate(p.date)} · {p.category2 ?? p.category}</span>
+                <div key={p.paymentId}>
+                  <div className="list-item" style={{ padding: '12px 0' }}>
+                    <span className="ic" style={{ background: bg }}><Icon id={icon} /></span>
+                    <div className="tx">
+                      <b>
+                        {name}
+                        {/* 답을 붙였으면 이름 옆에 딱지로 붙는다 — 누르면 다시 고칠 수 있다. */}
+                        {said[p.paymentId] && (
+                          <VerdictChips value={said[p.paymentId]}
+                            onPick={(v) => void answer(p.paymentId, v)} />
+                        )}
+                      </b>
+                      <span>{shortDate(p.date)} · {p.category2 ?? p.category}</span>
+                    </div>
+                    <span className="amt">-{won(p.amount)}</span>
                   </div>
-                  <span className="amt">-{won(p.amount)}</span>
+                  {/* 아직 안 붙인 결제에만 칩 줄이 선다. 답하면 접히고 위의 딱지로 옮겨간다. */}
+                  {!said[p.paymentId] && (
+                    <VerdictChips onPick={(v) => void answer(p.paymentId, v)} />
+                  )}
+                  <div style={{ borderBottom: '1px solid var(--bg)' }} />
                 </div>
               );
             })}

@@ -1,22 +1,29 @@
 /**
- * 이번 챌린지 정하기 — <b>화면 하나에서 다섯 걸음</b> (프로토타입_0818 `s-ob`).
+ * 이번 챌린지 정하기 — <b>화면 하나에서 네 걸음</b> (프로토타입_0828 `s-ob`).
  *
- * <p><b>0818 개편의 가장 큰 변화다.</b> 예전에는 화면 넷(ob1~ob4)이 줄줄이 이어졌다. 사람은
- * 화면이 바뀔 때마다 "여기가 어디였지"를 다시 세우고, 뒤로 가면 앞 화면의 선택이 살아 있는지
- * 확신하지 못한다. 지금은 <b>한 화면에서 말풍선이 쌓이고 무대만 바뀐다</b> — 지나온 걸음이
- * 위에 접힌 채로 남아 있어 문맥이 안 끊긴다.
+ * <p><b>0818 개편의 가장 큰 변화</b>는 화면 넷(ob1~ob4)을 하나로 합친 것이었다. 사람은 화면이
+ * 바뀔 때마다 "여기가 어디였지"를 다시 세우고, 뒤로 가면 앞 화면의 선택이 살아 있는지 확신하지
+ * 못한다. 지금은 <b>한 화면에서 말풍선이 쌓이고 무대만 바뀐다</b>.
+ *
+ * <p><b>0828 은 걸음을 다섯에서 넷으로 줄였다.</b> 성역 고르기(타일)와 줄일 곳 고르기(카드)가
+ * 각각 한 걸음이었는데, 둘 다 "이 소비를 어떻게 할까"를 묻는 같은 질문이었다. 카드를 좌우로
+ * 넘기는 <b>덱 하나</b>로 합쳤다 — 왼쪽이 포기할 수 없는 것, 오른쪽이 줄여볼 것이다.
  *
  * <pre>
  *   1  지난 소비를 분석했어요        막대가 그려진다        (자동으로 2로)
- *   2  줄일 수 있는 돈은 이만큼      막대에 절감분이 찬다
- *   3  못 줄이는 소비가 있나요       15칸 타일 = 성역
- *   4  줄이고 싶은 항목             카드 = 줄일 카테고리
- *   5  챌린지 목표를 세워봐요        슬라이더 + 항목별 스테퍼
+ *   2  아껴볼 수 있겠네요            찾은 항목 목록
+ *   3  포기할 수 없는 소비와…        덱 = 좌우로 넘겨 가른다
+ *   4  챌린지 목표를 세워봐요        슬라이더 + 항목별 스테퍼
  * </pre>
+ *
+ * <p><b>고르는 단위가 소분류로 내려갔다</b>(0828). 중분류(`식비`)로는 "밥을 포기할 수 없다"
+ * 밖에 못 말한다. 소분류(`배달`·`한식`)면 "배달은 줄이고 한식은 둔다"를 말할 수 있다.
+ * 소분류는 정확히 한 중분류에만 속하므로, 챌린지로 넘길 때 중분류가 정확히 되돌아온다 —
+ * 지킴이 도메인은 중분류 단위 그대로 두고 고르는 화면만 한 칸 내려간다.
  *
  * <p><b>왜 1단계만 자동으로 넘어가나.</b> 1은 <b>사람이 고를 것이 없는 브리핑</b>이라 버튼을
  * 두면 "읽었다"는 확인만 받는 셈이다. 2부터는 고를 것이 생기므로 버튼이 필요하다.
- * 뒤로 와서 2를 다시 볼 때는 <b>재생하지 않고 결과 상태로 세운다</b>(`playP2still`) —
+ * 뒤로 와서 앞 걸음을 다시 볼 때는 <b>재생하지 않고 결과 상태로 세운다</b> —
  * 이미 본 연출이 다시 도는 것은 기다림이지 안내가 아니다.
  *
  * <p><b>숫자는 실제 데이터다.</b> 프로토타입은 하드코딩된 값으로 그림을 보였지만, 여기서는
@@ -30,6 +37,8 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Cta, Screen, ErrorBox } from '../components/ui';
+import { SaveDeck, type Pick } from '../components/SaveDeck';
+import { SaveList } from '../components/SaveList';
 import { useSession } from '../state/session';
 import { useGuardian } from '../state/guardian';
 import { useAsync } from '../state/useAsync';
@@ -39,12 +48,12 @@ import { won, iconOf } from '../lib/format';
 
 /* ── 프로토타입이 정한 값들 ────────────────────────────────────────────── */
 
-/** 제목이 한 글자씩 떠오르는 간격과 줄 간격(ms). */
-const CHAR_STEP = 40;
-const LINE_STEP = 400;
+/** 제목이 한 글자씩 떠오르는 간격과 줄 간격(ms). 0828 에서 40/400 → 30/260 으로 빨라졌다. */
+const CHAR_STEP = 30;
+const LINE_STEP = 260;
 
-/** 걸음별 진행바. 숫자를 쓰지 않고 막대로만 안내한다. */
-const PROGRESS = ['50%', '50%', '62%', '74%', '87%', '100%'];
+/** 걸음별 진행바(0-based 자리채움 + 1~4단계). 숫자를 쓰지 않고 막대로만 안내한다. */
+const PROGRESS = ['20%', '20%', '40%', '60%', '80%'];
 
 /**
  * 막대 색 — 리포트 도넛과 <b>같은 팔레트</b>. 진한 색은 카테고리 본색이고
@@ -129,9 +138,8 @@ const titleDur = (lines: string[]) =>
 
 const MSGS: { title: string[]; sub?: string }[] = [
   { title: ['지난 소비를 분석했어요', '평균 소비 상위 카테고리예요'] },
-  { title: ['지킴이가 찾은', '줄일 수 있는 돈은 이만큼이에요'] },
-  { title: ['이건 못 줄여! 하는', '소비가 있나요?'], sub: '고른 소비는 절약 목표에서 완전히 빠져요' },
-  { title: ['앞으로 줄이고 싶은', '소비 항목을 선택해주세요'], sub: '지킴이가 추천한 항목을 미리 골라뒀어요' },
+  { title: ['이런 것들을', '아껴볼 수 있겠네요!'] },
+  { title: ['포기할 수 없는 소비와', '줄여볼 소비를 나눠주세요'] },
   { title: ['지킴이와 함께', '챌린지 목표를 세워봐요'], sub: '무리한 목표보다 지킬 수 있는 목표가 좋아요' },
 ];
 
@@ -178,7 +186,6 @@ export function Onboarding() {
   /* ── 재료 ─────────────────────────────────────────────────────────── */
 
   const win = useAsync(() => api.onboardingWindow(userId), [userId]);
-  const allCats = useAsync(() => api.categories().catch(() => []), [userId]);
 
   /** 창 안의 카테고리 — 쓴 금액 순. **모르는 칸은 고를 대상이 아니다**({@link isUnknownCategory}). */
   const rows = useMemo(() => (win.data?.categories ?? [])
@@ -237,33 +244,34 @@ export function Onboarding() {
     });
   }, [rows, cutOf]);
 
-  /** 줄일 수 있다고 본 돈의 합 — 2단계 히어로의 숫자다. */
-  const cutTotal = useMemo(() => rows.reduce((s, c) => s + cutOf(c), 0), [rows, cutOf]);
+  /**
+   * 2·3단계가 다루는 항목 — <b>소분류</b>다. 서버가 골라 낭비 금액 순으로 준다.
+   *
+   * <p>여기서 다시 거르거나 정렬하지 않는다. 고르는 규칙은 서버 한 곳에 있고
+   * (`SaveItemSelector`), 화면이 같은 일을 또 하면 두 곳이 갈린다(원칙 2).
+   */
+  const saveItems = useMemo(() => win.data?.saveItems ?? [], [win.data]);
 
-  /** 3단계 타일 — 고를 수 있는 카테고리 전부(이름순). */
-  const tiles = useMemo(() => (allCats.data ?? [])
-    .filter((c) => !isUnknownCategory(c.code))
-    .slice().sort((a, b) => a.code.localeCompare(b.code, 'ko')), [allCats.data]);
+  /** 덱에서 고른 것. `picks[i]` 가 `saveItems[i]` 의 답이다. */
+  const [picks, setPicks] = useState<Pick[]>([]);
 
-  /** 4단계 카드 — 성역으로 고른 것은 뺀다. */
-  const cards = useMemo(() => rows
-    .filter((c) => !draft.sanctuary.includes(c.categoryCode))
-    .filter((c) => !c.protectedCategory)
+  /** 4단계에서 손대는 항목 — 덱에서 '줄여볼래요' 로 간 것만. */
+  const goalItems = useMemo(() => saveItems
+    .filter((_, i) => picks[i] === 'cut')
     .map((c) => ({
+      /** 목표를 다루는 키는 소분류다 — 같은 중분류 안에서도 따로 정할 수 있어야 한다. */
+      key: c.sub,
       code: c.categoryCode,
-      name: catLabel(c.categoryCode, c.displayName),
-      amount: c.amount,
-      cut: cutOf(c),
-      ai: recommended.has(c.categoryCode),
-    })), [rows, draft.sanctuary, recommended, cutOf]);
+      name: c.sub,
+      amount: c.monthlyAmount,
+      cut: c.suggestedCut,
+    })), [saveItems, picks]);
 
-  /** 5단계에서 손대는 항목과 금액. */
-  const goalItems = useMemo(() => cards.filter((c) => draft.cutCats.includes(c.code)), [cards, draft.cutCats]);
   const [goalVals, setGoalVals] = useState<Record<string, number>>({});
   const [slider, setSlider] = useState(100);
   const recSum = useMemo(() => goalItems.reduce((s, c) => s + c.cut, 0), [goalItems]);
   const goalTotal = useMemo(
-    () => goalItems.reduce((s, c) => s + (goalVals[c.code] ?? c.cut), 0), [goalItems, goalVals]);
+    () => goalItems.reduce((s, c) => s + (goalVals[c.key] ?? c.cut), 0), [goalItems, goalVals]);
 
   /* ── 재료가 오면 담아 둔다(다른 화면이 쓴다) ───────────────────────── */
   const stored = useRef(false);
@@ -285,15 +293,11 @@ export function Onboarding() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows]);
 
-  /** 4단계에 처음 들어갈 때 AI 추천을 미리 골라 둔다(프로토타입: `ai` 카드가 `sel`). */
-  const preselected = useRef(false);
-  useEffect(() => {
-    if (preselected.current || cards.length === 0) return;
-    preselected.current = true;
-    const ai = cards.filter((c) => c.ai).map((c) => c.code);
-    if (ai.length > 0 && draft.cutCats.length === 0) patchDraft({ cutCats: ai });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cards.length]);
+  /*
+   * <b>미리 골라 두지 않는다</b>(0828). 0825 까지는 'AI 추천' 항목을 켠 채로 보여 줬는데,
+   * 그건 사용자의 답이 아니라 우리의 답이었다. 덱은 한 장씩 사람이 답하는 자리라
+   * 처음부터 비어 있어야 한다.
+   */
 
   /* ── 걸음 사이 연출 ───────────────────────────────────────────────── */
 
@@ -321,13 +325,20 @@ export function Onboarding() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clearSeq, showTitle, at]);
 
+  /**
+   * 2단계 — 아껴볼 소비 목록.
+   *
+   * <p><b>막대에 절감분이 차오르는 연출은 0828 에서 없어졌다.</b> 원본에도 `showCuts()` 가
+   * 정의만 남고 부르는 곳이 없다 — 이 걸음이 막대 채우기에서 목록으로 바뀌었기 때문이다.
+   * 막대는 그대로 물러나고(`exit`), 자리를 목록에 넘긴다.
+   */
   const toP2 = useCallback(() => {
     clearSeq(); setPhase(2);
     setCaption('지난 소비를 분석했어요');
-    setCtaIn(false); setChip(null);
-    const end = showTitle(2, 350);
-    at(end, () => { setBarCuts(true); setHeroIn(true); });
-    at(end + 1100, () => setCtaIn(true));
+    setCtaIn(false); setChip(null); setStageIn(false);
+    showTitle(2, 350);
+    at(500, () => setStageIn(true));
+    at(900, () => setCtaIn(true));
   }, [clearSeq, showTitle, at]);
 
   /** 되돌아온 2단계 — 이미 본 연출이라 <b>재생하지 않고</b> 결과 상태로 세운다. */
@@ -335,40 +346,35 @@ export function Onboarding() {
     clearSeq(); setPhase(2);
     setCaption('지난 소비를 분석했어요');
     setTitleOn({ 1: true, 2: true }); setSubOn({});
-    setBarDrawn(true); setBarCuts(true); setHeroIn(true);
-    setLegendIn(true); setStageIn(false); setCtaIn(true); setChip(null);
+    setBarDrawn(true); setHeroIn(true);
+    setLegendIn(true); setStageIn(true); setCtaIn(true); setChip(null);
   }, [clearSeq]);
 
+  /**
+   * 3단계 — 덱. <b>캡션을 접는다</b>(프로토타입: 이 걸음에는 캡션 줄이 없다).
+   * 카드가 화면을 거의 채우므로 위에 한 줄이라도 더 있으면 버튼이 밀려 내려간다.
+   */
   const toP3 = useCallback((instant?: boolean) => {
     clearSeq(); setPhase(3);
-    setCaption(`한 달에 ${fmt(cutTotal)}원 줄일 수 있어요`);
+    setCaption('');
     setStageIn(false); setChip(null);
     showTitle(3, instant ? 200 : 350);
     at(instant ? 300 : 500, () => setStageIn(true));
-    at(instant ? 300 : 900, () => setCtaIn(true));
-  }, [clearSeq, showTitle, at, cutTotal]);
+    at(instant ? 400 : 700, () => setCtaIn(true));
+  }, [clearSeq, showTitle, at]);
 
   const toP4 = useCallback((instant?: boolean) => {
     clearSeq(); setPhase(4);
-    const n = draft.sanctuary.length;
-    setCaption(n ? `지키고 싶은 소비 ${n}개를 골랐어요` : '지키고 싶은 소비 없이 진행해요');
+    const n = picks.filter((p) => p === 'cut').length;
+    setCaption(`줄일 항목 ${n}개를 골랐어요`);
     setStageIn(false); setChip(null);
+    // 슬라이더는 추천액 100% 에서 시작한다.
+    setGoalVals(Object.fromEntries(goalItems.map((c) => [c.key, c.cut])));
+    setSlider(100);
     showTitle(4, instant ? 200 : 350);
     at(instant ? 300 : 500, () => setStageIn(true));
     at(instant ? 400 : 700, () => setCtaIn(true));
-  }, [clearSeq, showTitle, at, draft.sanctuary.length]);
-
-  const toP5 = useCallback(() => {
-    clearSeq(); setPhase(5);
-    setCaption(`줄일 항목 ${draft.cutCats.length}개를 골랐어요`);
-    setStageIn(false);
-    // 슬라이더는 추천액 100% 에서 시작한다.
-    setGoalVals(Object.fromEntries(goalItems.map((c) => [c.code, c.cut])));
-    setSlider(100);
-    showTitle(5, 350);
-    at(500, () => setStageIn(true));
-    at(700, () => setCtaIn(true));
-  }, [clearSeq, showTitle, at, draft.cutCats.length, goalItems]);
+  }, [clearSeq, showTitle, at, picks, goalItems]);
 
   /** 재료가 오면 1단계를 시작한다. 데이터 없이 그리면 빈 막대가 먼저 보인다. */
   const started = useRef(false);
@@ -378,27 +384,26 @@ export function Onboarding() {
     playP1();
   }, [segs.length, playP1]);
 
-  /** 뒤로 — 앞 걸음은 <b>연출 없이</b> 결과 상태로 세운다. */
+  /**
+   * 뒤로 — 앞 걸음은 <b>연출 없이</b> 결과 상태로 세운다.
+   *
+   * <p>1·2단계로는 돌아가되 1로는 안 간다. 1은 고를 것이 없는 브리핑이라 되돌아갈 결정이
+   * 없고, 되돌아가면 자동으로 다시 2로 넘어와 제자리걸음이 된다.
+   *
+   * <p><b>덱에서 고른 것은 지우지 않는다.</b> 4단계에서 3으로 돌아오면 이미 분류를 마친
+   * 상태로 보이고, 되돌리기 버튼으로 한 장씩 물릴 수 있다.
+   */
   function goBack() {
-    if (phase === 5) toP4(true);
-    else if (phase === 4) toP3(true);
+    if (phase === 4) toP3(true);
     else if (phase === 3) stillP2();
   }
 
   /* ── 고르기 ───────────────────────────────────────────────────────── */
 
-  const toggleSanctuary = (code: string) => {
-    const on = draft.sanctuary.includes(code);
-    patchDraft({
-      sanctuary: on ? draft.sanctuary.filter((k) => k !== code) : [...draft.sanctuary, code],
-      // 성역으로 옮긴 카테고리는 줄일 목록에서 빠져야 한다 — 둘 다일 수는 없다.
-      cutCats: on ? draft.cutCats : draft.cutCats.filter((k) => k !== code),
-    });
-  };
-  const toggleCut = (code: string) => {
-    const on = draft.cutCats.includes(code);
-    patchDraft({ cutCats: on ? draft.cutCats.filter((k) => k !== code) : [...draft.cutCats, code] });
-  };
+  /** 덱에서 한 장 고름. 카드 순서와 답의 순서가 같아야 하므로 <b>끝에 붙인다</b>. */
+  const pick = useCallback((kind: Pick) => setPicks((p) => [...p, kind]), []);
+  /** 되돌리기 — 마지막 한 장을 물린다. */
+  const undo = useCallback(() => setPicks((p) => p.slice(0, -1)), []);
 
   /** 막대 한 칸을 누르면 그 칸만 본색으로 살아나고 금액 칩이 뜬다. */
   function tapSeg(i: number) {
@@ -415,52 +420,79 @@ export function Onboarding() {
   function onSlider(v: number) {
     setSlider(v);
     setGoalVals(Object.fromEntries(goalItems.map((c) =>
-      [c.code, Math.max(GOAL_STEP, Math.round(c.cut * v / 100 / GOAL_STEP) * GOAL_STEP)])));
+      [c.key, Math.max(GOAL_STEP, Math.round(c.cut * v / 100 / GOAL_STEP) * GOAL_STEP)])));
   }
   /** 스테퍼 — 한 칸 올리고 내린다. 슬라이더 위치도 따라 움직인다. */
-  function stepVal(code: string, delta: number) {
-    const item = goalItems.find((c) => c.code === code);
+  function stepVal(key: string, delta: number) {
+    const item = goalItems.find((c) => c.key === key);
     if (!item) return;
     const next = { ...goalVals };
-    next[code] = Math.min(item.amount, Math.max(GOAL_STEP, (goalVals[code] ?? item.cut) + delta));
+    next[key] = Math.min(item.amount, Math.max(GOAL_STEP, (goalVals[key] ?? item.cut) + delta));
     setGoalVals(next);
-    const sum = goalItems.reduce((s, c) => s + (next[c.code] ?? c.cut), 0);
+    const sum = goalItems.reduce((s, c) => s + (next[c.key] ?? c.cut), 0);
     if (recSum > 0) setSlider(Math.max(GOAL_MIN, Math.min(GOAL_MAX, Math.round(sum / recSum * 100))));
   }
 
   /* ── 마무리 ───────────────────────────────────────────────────────── */
 
+  /**
+   * 소분류로 고른 것을 <b>중분류로 접어</b> 챌린지를 만든다.
+   *
+   * <p>지킴이는 중분류 단위다 — 예산도 정산도 카테고리로 센다. 소분류는 정확히 한 중분류에만
+   * 속하므로 접기가 손실 없이 된다. 프로토타입도 같은 일을 표(`OB_KEY`)로 했는데, 우리는
+   * 서버가 항목마다 중분류를 함께 내려 주므로 표가 필요 없다.
+   *
+   * <p><b>성역은 "그 중분류에서 줄일 것이 하나도 없다"일 때만 붙는다.</b> `식비/배달` 은 줄이고
+   * `식비/한식` 은 뒀다면 식비는 성역이 아니다 — 줄일 것이 있는 칸을 통째로 빼면 사용자가
+   * 고른 것이 사라진다.
+   */
   async function finish() {
     if (goalTotal <= 0) {
       setError(new Error('지킬 돈이 0원이에요. 목표를 올리거나 다른 항목을 골라주세요.'));
       return;
     }
     setBusy(true); setError(null); setConflict(null);
+
+    // 중분류로 접는다 — 같은 칸에 든 소분류의 금액을 더한다.
+    const targets: Record<string, number> = {};
+    const baselines: Record<string, number> = {};
+    for (const c of goalItems) {
+      targets[c.code] = (targets[c.code] ?? 0) + (goalVals[c.key] ?? c.cut);
+      baselines[c.code] = (baselines[c.code] ?? 0) + c.amount;
+    }
+    const categories = Object.keys(targets);
+    const cutCats = new Set(categories);
+    const sanctuary = [...new Set(saveItems
+      .filter((_, i) => picks[i] === 'keep')
+      .map((c) => c.categoryCode)
+      .filter((code) => !cutCats.has(code)))];
+
     // 서버는 지킬 돈이 기준 지출보다 **작을 것**을 요구한다(예산 0원인 챌린지는 안 만든다).
-    const baselineTotal = goalItems.reduce((s, c) => s + c.amount, 0);
+    const baselineTotal = Object.values(baselines).reduce((s, v) => s + v, 0);
     const target = baselineTotal > 0 ? Math.min(goalTotal, baselineTotal - 1) : 0;
     try {
       await api.guardian.createChallenge(userId, {
-        categories: goalItems.map((c) => c.code),
-        sanctuaryCategories: draft.sanctuary,
+        categories,
+        sanctuaryCategories: sanctuary,
         targetSaving: target,
         durationDays: CHALLENGE_DAYS,
         keptPaymentIds: draft.keptPaymentIds,
         // 항목마다 정한 금액을 그대로 보낸다. 하나로 보내면 서버가 균등분할해
         // 사용자가 정한 것과 화면이 보여준 것이 달라진다.
-        categoryTargets: Object.fromEntries(goalItems.map((c) =>
-          [c.code, goalVals[c.code] ?? c.cut])),
+        categoryTargets: targets,
       });
       // ① 절약 후보 추적에도 남긴다 — 후보가 아니면 서버가 거부하므로 조용히 넘어간다.
       const candidates = analysis?.cutCandidates ?? [];
-      for (const c of goalItems) {
-        const hit = candidates.find((x) => x.category2.includes(c.name) || c.name.includes(x.category2));
+      for (const code of categories) {
+        const hit = candidates.find((x) => x.category2 === code);
         if (hit) await api.chooseCut(userId, hit.category2).catch(() => undefined);
       }
-      // 강도는 금액에서 되돌려 둔다 — 챌린지 관리 화면이 그 값을 읽는다.
+      // 다른 화면이 읽는 칸을 채워 둔다 — 강도는 금액에서 되돌린다.
       patchDraft({
-        intensities: Object.fromEntries(goalItems.map((c) =>
-          [c.code, c.amount > 0 ? Math.round((goalVals[c.code] ?? c.cut) / c.amount * 10) / 10 : 0.3])),
+        sanctuary,
+        cutCats: categories,
+        intensities: Object.fromEntries(categories.map((code) =>
+          [code, baselines[code] > 0 ? Math.round(targets[code] / baselines[code] * 10) / 10 : 0.3])),
       });
       await reload();
       replace('done');
@@ -478,16 +510,20 @@ export function Onboarding() {
     return `msg${state === 'live' ? '' : ` ${state}`}`;
   };
 
-  const heroLabel = phase === 1 ? '한 달 평균' : '한 달에';
-  const heroValue = `${fmt(phase === 1 ? spendTotal : cutTotal)}원`;
-  const chartExit = phase >= 3;
+  const heroLabel = '한 달 평균';
+  const heroValue = `${fmt(spendTotal)}원`;
+  /** 막대는 2단계에서 물러난다 — 그 자리를 목록이 받는다(0828). */
+  const chartExit = phase >= 2;
 
   const cta = (() => {
     if (phase === 1) return null;
     if (phase === 2) return { label: '다음', on: () => toP3(), off: false };
-    if (phase === 3) return { label: '다음', on: () => toP4(), off: false };
-    if (phase === 4) {
-      return { label: '이대로 챌린지 만들기', on: () => toP5(), off: draft.cutCats.length === 0 };
+    if (phase === 3) {
+      // 전부 분류하기 전에는 남은 장수를 라벨로 알린다(프로토타입 `updateCtaDeck`).
+      const left = saveItems.length - picks.length;
+      return left > 0
+        ? { label: `${left}개 선택 후 계속`, on: () => undefined, off: true }
+        : { label: '다음', on: () => toP4(), off: false };
     }
     return { label: busy ? '챌린지를 시작하는 중…' : '시작하기', on: () => void finish(), off: busy };
   })();
@@ -506,7 +542,9 @@ export function Onboarding() {
 
       <div className="scroll">
         <div className="pad">
-          <div className={`caption${caption ? ' in' : ''}`}>{caption}</div>
+          {/* 캡션이 없는 걸음(덱)에서는 <b>접는다</b>. 빈 채로 자리를 지키면 그만큼 카드가
+              눌려 아래 버튼이 CTA 밑으로 밀린다(원본 `hideCaption` 과 같다). */}
+          <div className={`caption${caption ? ' in' : ' off'}`}>{caption}</div>
           <div className="msg-stack">
             {MSGS.map((m, i) => {
               const n = i + 1;
@@ -575,56 +613,31 @@ export function Onboarding() {
             </div>
           </div>
 
-          {/* 3단계 — 성역. 고르면 절약 목표에서 <b>통째로</b> 빠진다. */}
-          <div className="stage-item choice-box">
-            <div className={`tiles${phase === 3 && stageIn ? ' in' : ''}`}>
-              {tiles.map((c, i) => {
-                const { icon, bg } = iconOf(c.code);
-                const on = draft.sanctuary.includes(c.code);
-                return (
-                  <button type="button" key={c.code} className={`tile${on ? ' sel' : ''}`}
-                    aria-pressed={on} style={{ transitionDelay: `${i * 30}ms` }}
-                    onClick={() => toggleSanctuary(c.code)}>
-                    <span className="box" style={{ background: bg }}>
-                      <svg><use href={`#${icon}`} /></svg>
-                    </span>
-                    <span className="nm">{catLabel(c.code, c.code)}</span>
-                  </button>
-                );
-              })}
+          {/* 2단계 — 아껴볼 소비 목록. 셋만 보이고 더 보고 싶은 사람만 펼친다. */}
+          <div className="stage-item list-box">
+            <div className={`saves-wrap${phase === 2 && stageIn ? ' in' : ''}`}>
+              {saveItems.length > 0
+                ? <SaveList items={saveItems} />
+                : phase === 2 && (
+                  <p className="empty">
+                    아껴볼 만한 곳을 못 찾았어요. 소비가 더 쌓이면 다시 찾아볼게요.
+                  </p>
+                )}
             </div>
           </div>
 
-          {/* 4단계 — 줄일 항목. AI 추천은 미리 골라 두되 끌 수 있다. */}
-          <div className="stage-item list-box">
-            <div className={`cards${phase === 4 && stageIn ? ' in' : ''}`}>
-              {cards.map((c, i) => {
-                const { icon, bg } = iconOf(c.name);
-                const on = draft.cutCats.includes(c.code);
-                return (
-                  <button type="button" key={c.code} className={`ccard${on ? ' sel' : ''}`}
-                    aria-pressed={on} style={{ transitionDelay: `${i * 60}ms` }}
-                    onClick={() => toggleCut(c.code)}>
-                    <span className="ic" style={{ background: bg }}>
-                      <svg><use href={`#${icon}`} /></svg>
-                    </span>
-                    <span className="mid">
-                      <span className="row1"><b>{c.name}</b>{c.ai && <span className="badge">AI추천</span>}</span>
-                      <span className="sub">월평균 {fmt(c.amount)}원</span>
-                    </span>
-                    <span className="amt">-{fmt(c.cut)}원</span>
-                  </button>
-                );
-              })}
-              {cards.length === 0 && phase === 4 && (
-                <p className="empty">줄일 만한 곳을 못 찾았어요. 앞 걸음에서 성역을 조금 줄여보세요.</p>
+          {/* 3단계 — 덱. 왼쪽이 포기할 수 없는 것, 오른쪽이 줄여볼 것이다. */}
+          <div className="stage-item deck-box">
+            <div className={`deck-wrap${phase === 3 && stageIn ? ' in' : ''}`}>
+              {saveItems.length > 0 && (
+                <SaveDeck items={saveItems} picks={picks} onPick={pick} onUndo={undo} />
               )}
             </div>
           </div>
 
-          {/* 5단계 — 목표 금액. 슬라이더로 한 번에, 스테퍼로 항목마다. */}
+          {/* 4단계 — 목표 금액. 슬라이더로 한 번에, 스테퍼로 항목마다. */}
           <div className="stage-item goal-box">
-            <div className={`goal${phase === 5 && stageIn ? ' in' : ''}`}>
+            <div className={`goal${phase === 4 && stageIn ? ' in' : ''}`}>
               <div className="gcard">
                 <div className="lbl">한 달 목표 저금액</div>
                 <div className="amt">{fmt(goalTotal)}원</div>
@@ -642,10 +655,10 @@ export function Onboarding() {
               </div>
               <div className="gitems">
                 {goalItems.map((c) => {
-                  const { icon, bg } = iconOf(c.name);
-                  const v = goalVals[c.code] ?? c.cut;
+                  const { icon, bg } = iconOf(c.code);
+                  const v = goalVals[c.key] ?? c.cut;
                   return (
-                    <div className="grow" key={c.code}>
+                    <div className="grow" key={c.key}>
                       <span className="ic" style={{ background: bg }}>
                         <svg><use href={`#${icon}`} /></svg>
                       </span>
@@ -653,11 +666,11 @@ export function Onboarding() {
                       <span className="stepper">
                         <button type="button" aria-label={`${c.name} 목표 낮추기`}
                           disabled={v <= GOAL_STEP}
-                          onClick={() => stepVal(c.code, -GOAL_STEP)}>−</button>
+                          onClick={() => stepVal(c.key, -GOAL_STEP)}>−</button>
                         <span className="val">{fmtMan(v)}</span>
                         <button type="button" aria-label={`${c.name} 목표 올리기`}
                           disabled={v >= c.amount}
-                          onClick={() => stepVal(c.code, GOAL_STEP)}>＋</button>
+                          onClick={() => stepVal(c.key, GOAL_STEP)}>＋</button>
                       </span>
                     </div>
                   );

@@ -951,6 +951,19 @@ button.card, button.pt-card, button.fut-card, button.tip-card, button.exp-bn{
 }
 button.sp-tag{min-height:44px;padding:0 8px;margin:-14px 0 -14px 8px;}
 .tag-sanct{background:var(--green-weak);color:var(--green-t);}
+/* 사람이 붙인 답 딱지 (프로토타입_0828 `.tag-ctx`). 눌러서 다시 고칠 수 있으므로 버튼이다. */
+.tag-ctx{background:#F1F3F5;color:var(--t3);cursor:pointer;border:none;font-family:inherit;}
+
+/* ---- 결제에 답 붙이는 칩 (프로토타입_0828 `.ctx3`) ----
+   누르면 위로 접히며 사라지고, 이름 옆 딱지로 옮겨간다. 답한 줄과 안 한 줄이 같은 높이로
+   남아 있으면 어디까지 했는지가 안 보인다. */
+.ctx3{display:flex;gap:8px;margin:0 0 8px 60px;flex-wrap:wrap;align-items:center;
+  max-height:32px;transition:max-height .3s ease, opacity .25s ease, margin-bottom .3s ease;}
+.ctx3.fold{overflow:hidden;max-height:0;opacity:0;margin-bottom:0;}
+.ctx3 button{position:relative;border:1px solid var(--line);background:#fff;border-radius:20px;
+  height:24px;min-width:60px;padding:4px 8px;font-size:12px;font-weight:500;color:var(--t2);
+  cursor:pointer;font-family:inherit;transition:.15s;}
+.ctx3 button.on{background:var(--t1);color:#fff;border-color:var(--t1);}
 /* 4.64:1 */
 .tag-fixed{
   background:var(--track);
@@ -3820,7 +3833,12 @@ button.list-item:active{ opacity: .6; }
     padding-bottom:calc(32px + env(safe-area-inset-bottom,0px));}
   .mm-x{top:calc(env(safe-area-inset-top,0px) + 16px);}
   .cta-fixed{padding-bottom:calc(32px + env(safe-area-inset-bottom,0px));}
-  #s-walk .walk-cta{bottom:calc(32px + env(safe-area-inset-bottom,0px));}
+  /* 0828 — <b>한 장만 보여 준다.</b> 2·3장과 점 표시를 숨기고 가로 스크롤을 막는다.
+   지우지 않고 가리는 이유는 되돌리기 쉽게 하기 위해서다(클래스 하나만 떼면 셋으로 돌아온다). */
+#s-walk.walk-single .walk-slide:nth-child(n+2){display:none;}
+#s-walk.walk-single .walk-dots{display:none;}
+#s-walk.walk-single .walk-track{overflow:hidden;}
+#s-walk .walk-cta{bottom:calc(32px + env(safe-area-inset-bottom,0px));}
 }
 /* ---- 본인확인: 흰 배경 ---- */
 #s-auth{background:#fff;--screen-bg:#fff;}
@@ -4004,6 +4022,9 @@ button.list-item:active{ opacity: .6; }
   display:flex;align-items:center;gap:8px;}
 .tip-card .cat{width:20px;height:20px;flex:0 0 auto;}
 .tip-card span{font-size:13px;font-weight:600;color:var(--t1);line-height:1.45;}
+/* 0828 — 줄에 이름을 붙인다('오늘의 행동'). 이름이 없으면 지나가는 인사말로 읽힌다. */
+.tip-card .tip-tx{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.tip-card .tip-tx small{font-size:11px;font-weight:600;color:var(--t3);letter-spacing:-.2px;}
 /* 히어로 좌측: 원형 진행률 링 */
 .hring{position:relative;width:88px;height:88px;flex:0 0 auto;}
 .hring svg{width:88px;height:88px;display:block;}
@@ -4299,6 +4320,16 @@ button.list-item:active{ opacity: .6; }
   opacity:0;transform:translateY(10px);}
 #s-obdone .od-wrap.in h3{opacity:1;transform:none;transition:opacity .4s .35s,transform .4s .35s;}
 #s-obdone .od-wrap.in p{opacity:1;transform:none;transition:opacity .4s .5s,transform .4s .5s;}
+/* 남은 시간을 보이게 하는 진행선(0828). 다 차면 홈으로 간다 — 갑자기 넘어가면 사람은
+   무슨 일이 일어났는지 모른다. 화면 아무 데나 눌러도 곧바로 넘어간다. */
+#s-obdone .od-line{position:absolute;left:0;right:0;bottom:0;height:3px;background:transparent;}
+#s-obdone .od-line i{display:block;height:100%;width:0;background:var(--blue);}
+#s-obdone .od-line.run i{width:100%;transition:width 1.5s linear .9s;}
+#s-obdone .od-tap{cursor:pointer;}
+/* 움직임을 줄여 달라고 한 사람에게는 자동 전환도 진행선도 걸지 않는다(KWCAG 2.2 응답시간 조절). */
+@media (prefers-reduced-motion: reduce){
+  #s-obdone .od-line.run i{width:0;transition:none;}
+}
 /* ================= 온보딩 연속 연출 (신규) ================= */
 /* 전역 클래스 누수 차단 (온보딩 전용 리셋) */
 #s-ob .hero{background:none;border-radius:0;padding:0;margin:0;height:78px;
@@ -4324,6 +4355,9 @@ button.list-item:active{ opacity: .6; }
 .caption{height:20px;margin:40px 0 6px;font-size:13px;color:var(--t4);
   opacity:0;transition:opacity .25s var(--ease);}
 #s-ob .caption.in{opacity:1;}
+/* 덱 단계에는 캡션 줄이 없다(원본 `hideCaption`). 빈 채로 66px 을 차지하면 그만큼 카드가
+   눌려 버튼이 CTA 밑으로 밀린다. 원본과 같은 값으로 접는다. */
+#s-ob .caption.off{height:0;margin:28px 0 0;}
 #s-ob .msg-stack{display:grid;}
 #s-ob .msg{grid-area:1/1;transition:opacity .25s var(--ease);}
 #s-ob .msg.out{opacity:0;pointer-events:none;}
@@ -4345,7 +4379,7 @@ button.list-item:active{ opacity: .6; }
 #s-ob /* 겹친 레이어는 터치를 통과시키고, #s-ob 활성 콘텐츠만 수신 */
 .chart-box .cwrap{pointer-events:auto;}
 #s-ob .chart-box.exit .cwrap{pointer-events:none;}
-#s-ob .tiles.in, #s-ob .cards.in, #s-ob .goal.in{pointer-events:auto;}
+#s-ob .saves-wrap.in, #s-ob .deck-wrap.in, #s-ob .goal.in{pointer-events:auto;}
 #s-ob .cwrap{width:100%;padding:0 24px;}
 #s-ob /* 히어로 — 1단계에선 자리만 차지하고 보이지 않는다 (레이아웃 시프트 0) */
 .hero{height:78px;display:flex;flex-direction:column;justify-content:center;}
@@ -4400,72 +4434,172 @@ button.list-item:active{ opacity: .6; }
   color:var(--green);letter-spacing:0;white-space:nowrap;opacity:0;
   transition:width .4s var(--ease), opacity .4s var(--ease);}
 #s-ob .slg.cuts .lgr .cv{width:72px;opacity:1;}
-#s-ob /* ---- 3단계: 성역 타일 그리드 ---- */
-/* **넘치면 스크롤한다.** 개편안은 375×812 안에서 타일 15개가 딱 맞았지만, 화면이 낮거나
-   항목이 늘면 아래 줄이 잘려 **누를 수가 없다**(사용자 보고 2026-08-20). 바닥의 여백은
-   그 위에 떠 있는 CTA(높이 104px)를 피해 마지막 줄까지 닿게 하는 자리다. */
-.choice-box{align-items:flex-start;padding:4px var(--pad-x) calc(var(--cta-h) + 56px);
-  overflow-y:auto;pointer-events:auto;
-  scrollbar-width:none;-ms-overflow-style:none;
-  /* **아래가 더 있다는 표시.** 스크롤바를 숨겨 두니(프로토타입에 없는 요소다) 잘린 것이
-     아니라 "그림이 없다"로 읽혔다(사용자 제보 2026-08-21). 스크롤바를 되살리는 대신
-     가장자리를 흐려 알린다 — 넘치지 않으면 아무것도 안 보인다.
-
-     `mask-image` 는 넘침 여부를 모르므로 늘 걸려 있는데, 내용이 짧으면 흐려질 자리가
-     화면 밖이라 눈에 띄지 않는다. 끝까지 내리면 마지막 줄이 흐려 보이는 것은 감수한다 —
-     스크롤바를 늘 띄우는 것보다 조용하다. */
-  --fade: 28px;
-  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--fade)), transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--fade)), transparent 100%);}
-#s-ob .choice-box::-webkit-scrollbar{display:none;}
-/* 움직임을 줄여 달라고 한 사람에게는 흐림도 방해가 될 수 있다 — 그때는 걷는다. */
-@media (prefers-reduced-motion: reduce){ #s-ob .choice-box{ mask-image:none; -webkit-mask-image:none; } }
-#s-ob .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:14px 12px;
-  /* 개편안은 375px 프레임 기준 316px 고정이고, 그 폭은 좌우 24px 여백을 뺀 327px 을
-     거의 채운다. 즉 원래도 '꽉 찬 폭'이었다 — 고정값으로 옮기면 열이 넓어질 때
-     타일만 가운데로 모여 제목과 선이 어긋난다. 여백은 `.choice-box` 가 준다. */
-  width:100%;}
-#s-ob .tile{display:flex;flex-direction:column;align-items:center;gap:6px;
-  background:none;border:none;padding:0;cursor:pointer;font-family:inherit;
-  opacity:0;transform:translateY(14px);
-  transition:opacity .3s var(--ease), transform .3s var(--ease);}
-#s-ob .tiles.in .tile{opacity:1;transform:none;}
-#s-ob .tile .box{width:62px;height:62px;border-radius:var(--radius);display:flex;
-  align-items:center;justify-content:center;
-  border:2px solid transparent;
-  transition:border-color .15s var(--ease), transform .15s var(--ease),
-             box-shadow .15s var(--ease);}
-#s-ob .tile .box svg{width:30px;height:30px;}
-#s-ob .tile:active .box{transform:scale(.93);}
-#s-ob .tile.sel .box{border-color:var(--green);box-shadow:0 0 0 1px var(--green) inset;}
-#s-ob .tile .nm{font-size:12px;font-weight:600;color:var(--t1);white-space:nowrap;}
-#s-ob /* ---- 4단계: 줄일 항목 카드 (피그마 319:2122 GoalRow) ----
-   카드 343 · px16 py16 · radius16 · border 1px var(--line) / 선택 1.5px #00B173 · 간격 12 */
+#s-ob /* ---- 2단계: 아껴볼 소비 목록 (프로토타입_0828 `#saves`) ----
+   처음 3개만 보이고 더 보기로 5개씩 펼친다. 목록의 역할은 「N개를 찾았다」는 사실 전달과
+   근거 맛보기지 완독이 아니다 — 3개면 CTA 가 첫 화면 안에 들어와 스크롤 없이 다음으로 간다. */
 .list-box{align-items:flex-start;overflow:hidden;min-height:0;}
-#s-ob .cards{width:100%;height:100%;overflow-y:auto;padding:4px 16px calc(var(--cta-h) + 56px);
-  display:flex;flex-direction:column;gap:12px;
-  scrollbar-width:none;-ms-overflow-style:none;}
-#s-ob .cards::-webkit-scrollbar{display:none;}
-#s-ob .ccard{display:flex;align-items:center;gap:12px;text-align:left;width:100%;
-  background:#fff;border:1px solid var(--line);border-radius:16px;
-  padding:16px;cursor:pointer;font-family:inherit;
+#s-ob .saves-wrap{width:100%;height:100%;overflow-y:auto;padding:4px 16px calc(var(--cta-h) + 56px);
+  scrollbar-width:none;-ms-overflow-style:none;
   opacity:0;transform:translateY(14px);
-  transition:opacity .3s var(--ease), transform .3s var(--ease),
-             border-color .15s var(--ease), box-shadow .15s var(--ease);}
-#s-ob .cards.in .ccard{opacity:1;transform:none;}
-#s-ob .ccard:active{transform:scale(.985);}
-#s-ob .ccard.sel{border-color:var(--green);box-shadow:0 0 0 .5px var(--green) inset;}
-#s-ob .ccard .ic{width:40px;height:40px;border-radius:12px;display:flex;flex:0 0 auto;
-  align-items:center;justify-content:center;}
-#s-ob .ccard .ic svg{width:22px;height:22px;}
-#s-ob .ccard .mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;align-items:flex-start;}
-#s-ob .ccard .row1{display:flex;align-items:center;gap:6px;}
-#s-ob .ccard .row1 b{font-size:15px;font-weight:600;letter-spacing:-0.6px;line-height:1.5;color:var(--t1);}
-#s-ob .ccard .badge{font-size:12px;font-weight:500;line-height:1.4;color:var(--brand-ink);
-  background:var(--brand-weak);border-radius:20px;padding:2px 6px;flex:0 0 auto;}
-#s-ob .ccard .sub{font-size:12px;font-weight:700;line-height:1.4;letter-spacing:-0.48px;color:var(--t3);}
-#s-ob .ccard .amt{font-size:15px;font-weight:500;line-height:1.5;color:var(--t1);
-  letter-spacing:0;white-space:nowrap;flex:0 0 auto;}
+  transition:opacity .35s var(--ease), transform .35s var(--ease);}
+#s-ob .saves-wrap.in{opacity:1;transform:none;pointer-events:auto;}
+#s-ob .saves-wrap::-webkit-scrollbar{display:none;}
+#s-ob .sv-cap{font-size:14px;font-weight:700;color:var(--t1);letter-spacing:-.4px;margin:0 0 10px 2px;}
+#s-ob .sv-cap em{font-style:normal;color:var(--green);}
+#s-ob .sv-list{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;}
+#s-ob .sv-row{padding:18px 16px;border-top:1px solid var(--line);}
+#s-ob .sv-row:first-child{border-top:none;}
+#s-ob .sv-row .r1{display:flex;align-items:center;gap:8px;}
+#s-ob .sv-row .nm{font-size:17px;font-weight:700;color:var(--t1);letter-spacing:-.5px;}
+#s-ob .sv-row .cat{margin-left:auto;font-size:12px;font-weight:600;border-radius:20px;padding:4px 10px;
+  background:var(--fill);color:var(--t2);}
+#s-ob .sv-row .r2{display:flex;align-items:baseline;gap:8px;margin-top:10px;}
+#s-ob .sv-row .r2 span{font-size:13px;font-weight:500;color:var(--t3);}
+#s-ob .sv-row .r2 b{font-size:17px;font-weight:700;color:var(--t1);letter-spacing:-.4px;}
+#s-ob .sv-row .why{margin-top:12px;background:var(--bg);border-radius:10px;
+  padding:11px 12px;font-size:13px;font-weight:500;color:var(--t2);line-height:1.45;letter-spacing:-.3px;}
+#s-ob /* 펼칠 때 새로 들어온 행만 살짝 올라오며 나타난다 — 전부 움직이면 읽던 자리를 잃는다 */
+.sv-row.fresh{animation:svIn .28s var(--ease) both;}
+@keyframes svIn{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:none;}}
+#s-ob .sv-more{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;
+  background:none;border:none;border-top:1px solid var(--line);cursor:pointer;font-family:inherit;
+  padding:16px;font-size:14px;font-weight:600;color:var(--t2);letter-spacing:-.3px;}
+#s-ob .sv-more svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round;transition:transform .3s var(--ease);}
+#s-ob .sv-more svg.up{transform:rotate(180deg);}
+
+#s-ob /* ---- 3단계: 소비 분류 덱 (프로토타입_0828 `#deck`) ----
+   카드 radius24 · 패딩 23. 고스트 두 장이 1.8°/3.6° 로 오른쪽 뒤에 겹쳐 남은 장수를 알린다. */
+.deck-box{align-items:flex-start;
+  /* 코치마크가 카드 위로 46px 벗어나므로 여기서 자르지 않는다.
+     드래그로 빠져나가는 카드는 바깥(`overflow:hidden`)이 화면 경계에서 자른다. */
+  overflow:visible;min-height:0;}
+/* **모자라면 스크롤한다.** 프로토타입은 812px 프레임이라 카드 330 + 버튼이 늘 들어갔지만,
+   낮은 화면(658px 실측)에서는 카드가 146px 로 눌려 <b>내용이 카드 밖으로 새어 버튼을 덮었다</b>
+   — 버튼이 눌리지 않는다. 카드 높이를 고정하고 넘치는 만큼 덱을 굴린다. */
+#s-ob .deck-wrap{width:100%;height:100%;overflow-y:auto;
+  scrollbar-width:none;-ms-overflow-style:none;
+  opacity:0;transform:translateY(14px);
+  transition:opacity .35s var(--ease), transform .35s var(--ease);}
+#s-ob .deck-wrap::-webkit-scrollbar{display:none;}
+#s-ob .deck-wrap.in{opacity:1;transform:none;pointer-events:auto;}
+/* 바닥 116px 은 그 위에 떠 있는 CTA(실측 104px)를 피하는 자리다 — `--cta-h`(56)만 비우면
+   버튼이 CTA 밑으로 들어가 안 눌린다(실측 2026-08-31). 프로토타입과 같은 값이다. */
+#s-ob .deck{width:100%;min-height:100%;padding:0 24px 116px;
+  display:flex;flex-direction:column;}
+#s-ob .dk-head{display:flex;align-items:center;height:14px;margin-bottom:clamp(12px,3vh,24px);}
+#s-ob .dk-head .idx{font-size:12px;font-weight:700;color:var(--t2);letter-spacing:-.64px;}
+#s-ob .dk-head .idx em{font-style:normal;color:var(--green);}
+#s-ob .dk-undo{margin-left:auto;display:flex;align-items:center;gap:4px;background:none;border:none;
+  font-family:inherit;font-size:12px;font-weight:600;color:var(--t3);letter-spacing:-.64px;
+  cursor:pointer;padding:0;}
+#s-ob .dk-undo:disabled{opacity:.35;cursor:default;}
+#s-ob .dk-undo svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round;}
+/* 카드 높이는 <b>화면에 맞춰 준다</b>. 프로토타입의 330px 은 812px 프레임 기준인데, 낮은
+   화면에서 그대로 두면 버튼이 화면 밖으로 밀린다. 아래 한계(232px)는 카드 안의 것이 다
+   들어가는 최소치다 — 그보다 줄이면 근거 문장이 새어 버튼을 덮는다(658px 실측). */
+#s-ob .dk-stack{position:relative;flex:1 1 auto;min-height:232px;max-height:330px;
+  margin-right:6px;overflow:visible;}
+#s-ob .dk-ghost{position:absolute;inset:0;background:#fff;border:1px solid var(--line);
+  border-radius:24px;box-shadow:0 10px 24px rgba(27,36,45,.06);transform-origin:50% 50%;}
+#s-ob .dk-ghost.g1{transform:rotate(1.8deg);}
+#s-ob .dk-ghost.g2{transform:rotate(3.6deg);}
+#s-ob .dk-card{position:absolute;inset:0;background:#fff;border:1px solid var(--line);
+  border-radius:24px;padding:23px;display:flex;flex-direction:column;
+  filter:drop-shadow(0 14px 18px rgba(27,36,45,.09));
+  touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;}
+#s-ob .dk-card.drag{transition:none;cursor:grabbing;}
+#s-ob .dk-card.snap{transition:transform .28s var(--ease);}
+
+#s-ob /* ---- 드래그 방향 표식 ----
+   카드 중앙 여백(이름과 월평균 사이)에 놓아 아이콘·태그와 겹치지 않게 한다 */
+.dk-stamp{position:absolute;top:128px;left:50%;padding:9px 14px;border-radius:12px;
+  font-size:14px;font-weight:700;letter-spacing:-.4px;white-space:nowrap;
+  opacity:0;pointer-events:none;
+  transition:opacity .12s linear, transform .16s var(--ease);
+  transform:translateX(-50%) scale(.9);}
+#s-ob .dk-stamp.keep{background:#EDEFF2;color:#3D4148;}
+#s-ob .dk-stamp.cut{background:#CDEEDB;color:#0A5B3A;}
+#s-ob /* 임계값을 넘기면 놓는 순간 확정된다는 걸 미리 알린다 */
+.dk-card.will .dk-stamp{transform:translateX(-50%) scale(1);}
+#s-ob .dk-card.will-keep{border-color:#9AA1AA;}
+#s-ob .dk-card.will-cut{border-color:var(--green);}
+
+#s-ob /* ---- 코치마크: 첫 카드에서 한 번만 ---- */
+.dk-hint{position:absolute;left:50%;top:-46px;transform:translateX(-50%) translateY(4px);
+  background:#2B2E33;color:#fff;border-radius:12px;padding:9px 14px;
+  font-size:13px;font-weight:600;letter-spacing:-.4px;white-space:nowrap;
+  opacity:0;pointer-events:none;z-index:3;
+  transition:opacity .3s var(--ease), transform .3s var(--ease);}
+#s-ob .dk-hint::after{content:'';position:absolute;left:50%;bottom:-6px;
+  width:12px;height:12px;background:#2B2E33;transform:translateX(-50%) rotate(45deg);border-radius:2px;}
+#s-ob .dk-hint.in{opacity:1;transform:translateX(-50%) translateY(0);}
+#s-ob /* 안내 중 카드가 좌우로 살짝 흔들려 조작 가능함을 알린다 */
+.dk-card.nudge{animation:dkNudge 2.2s var(--ease) .5s 2;}
+@keyframes dkNudge{
+  0%,100%{transform:none;}
+  12%{transform:translateX(-16px) rotate(-1.4deg);}
+  28%{transform:translateX(14px) rotate(1.2deg);}
+  40%{transform:none;}
+}
+@media (prefers-reduced-motion:reduce){ #s-ob .dk-card.nudge{animation:none;} }
+#s-ob .dk-card.out-keep{animation:dkOutL .28s var(--ease) forwards;}
+#s-ob .dk-card.out-cut{animation:dkOutR .28s var(--ease) forwards;}
+@keyframes dkOutL{to{opacity:0;transform:translateX(-56px) rotate(-5deg);}}
+@keyframes dkOutR{to{opacity:0;transform:translateX(56px) rotate(5deg);}}
+#s-ob /* 카드 상단: 카테고리 필 + 건수 필 + 아이콘 */
+.dk-meta{display:flex;align-items:center;gap:8px;height:40px;flex:0 0 auto;}
+#s-ob .dk-meta .tg{display:flex;align-items:center;height:24px;padding:0 8px;border-radius:999px;
+  font-size:12px;font-weight:600;line-height:11px;white-space:nowrap;color:var(--t1);}
+#s-ob .dk-meta .tg.time{background:#F2F2F2;color:#4F4F4F;}
+#s-ob .dk-ic{margin-left:auto;width:40px;height:40px;border-radius:12px;flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center;}
+#s-ob .dk-ic svg{width:24px;height:24px;}
+#s-ob .dk-nm{margin-top:14px;font-size:24px;font-weight:700;color:var(--t1);
+  letter-spacing:-.88px;line-height:29.7px;flex:0 0 auto;}
+#s-ob .dk-spacer{flex:1 1 auto;min-height:8px;}
+#s-ob .dk-avg{flex:0 0 auto;}
+#s-ob .dk-avg span{display:block;font-size:14px;font-weight:500;color:var(--t3);
+  letter-spacing:-.64px;line-height:14px;}
+#s-ob .dk-avg b{display:block;margin-top:8px;font-size:22px;font-weight:700;color:var(--t1);line-height:1;}
+/* 근거는 두 줄까지. 길어도 카드를 밀어내지 않는다 — 밀려나면 버튼이 안 눌린다. */
+#s-ob .dk-why{margin-top:16px;flex:0 0 auto;background:#F8F9FA;border-radius:14px;
+  padding:13px 14px;font-size:13px;font-weight:500;color:var(--t2);
+  line-height:19.5px;letter-spacing:-.64px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+#s-ob .dk-btns{display:flex;gap:8px;margin-top:clamp(16px,4vh,34px);flex:0 0 auto;}
+#s-ob .dk-btns button{flex:1 1 0;min-width:0;height:50px;border:none;border-radius:14px;
+  font-family:inherit;font-size:14px;font-weight:700;letter-spacing:-.56px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:4px;
+  transition:transform .12s var(--ease), filter .12s var(--ease);}
+#s-ob .dk-btns button:active{transform:scale(.97);}
+#s-ob .dk-btns svg{width:16px;height:16px;flex:0 0 auto;fill:none;stroke:currentColor;
+  stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+#s-ob .dk-keep{background:#F1F3F5;color:#292326;}
+/* **낮은 화면에서는 카드 안을 줄인다.** 원본은 812px 프레임 하나만 보고 카드 330 + 버튼 +
+   CTA 를 세웠는데, 727·658 에서는 그 합이 화면을 넘겨 버튼이 CTA 밑으로 들어간다(실측
+   2026-08-31). 근거 문장을 한 줄로 줄이고 이름과 여백을 좁혀 버튼 자리를 만든다. */
+@media (max-height: 760px){
+  #s-ob .dk-head{margin-bottom:10px;}
+  #s-ob .dk-stack{min-height:180px;}
+  #s-ob .dk-nm{margin-top:10px;font-size:20px;line-height:26px;}
+  #s-ob .dk-why{margin-top:10px;padding:10px 12px;-webkit-line-clamp:1;}
+  #s-ob .dk-avg b{font-size:20px;}
+  #s-ob .dk-btns{margin-top:12px;}
+}
+#s-ob .dk-cut{background:#E2F6D5;color:#0A5B3A;}
+#s-ob /* 분류 완료 요약 */
+.dk-done{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;gap:10px;
+  animation:dkIn .34s var(--ease);}
+@keyframes dkIn{from{opacity:0;transform:translateX(34px) rotate(2.5deg);}to{opacity:1;transform:none;}}
+#s-ob .dk-done .dd-row{display:flex;align-items:center;gap:10px;background:#fff;
+  border:1px solid var(--line);border-radius:16px;padding:16px;}
+#s-ob .dk-done .dd-row .k{font-size:14px;font-weight:600;color:var(--t2);}
+#s-ob .dk-done .dd-row .v{margin-left:auto;font-size:15px;font-weight:700;color:var(--t1);}
+#s-ob .dk-done .dd-row.cut .v{color:var(--green);}
+#s-ob .dk-done .dd-note{font-size:13px;color:var(--t3);text-align:center;line-height:1.5;margin-top:4px;}
+
 #s-ob /* ---- 5단계: 목표 설정 (피그마 319:2005 스펙) ---- */
 /* `min-height:0` 이 없으면 flex 자식(`.goal`)이 내용 높이 아래로 줄지 못해
    상자가 넘치고, 넘친 만큼은 `overflow:hidden` 이라 **잘린 채 스크롤도 안 된다**. */
@@ -4681,6 +4815,8 @@ button.list-item:active{ opacity: .6; }
 .gv-leg span{display:flex;align-items:center;gap:5px}
 .gv-dot{width:8px;height:8px;border-radius:50%;background:var(--track);display:inline-block}
 .gv-dot.on{background:var(--blue)}
+/* 아직 정산 전인 진행분 — 확정과 같은 계열이되 옅게 둔다(0828). */
+.gv-dot.pend{background:var(--blue-weak, #BBD9FB)}
 .gv-stat2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .gv-st{background:var(--bg);border-radius:var(--radius-sm);padding:14px}
 .gv-st span{display:block;font-size:12px;color:var(--t2)}
@@ -4701,3 +4837,18 @@ button.list-item:active{ opacity: .6; }
 
 /* 목록에서 이름을 눌러 들어가므로 버튼인데 글자처럼 보여야 한다. */
 .goal-name.as-link{border:0;background:transparent;padding:0;text-align:left;cursor:pointer;font:inherit;color:inherit}
+
+/* ---- 리포트 ④ 내가 붙인 라벨 (프로토타입_0828) ----
+   또래 비교를 걷어낸 자리다. 두 갈래를 금액 비율로 한 줄에 보이고, 아래에 건수와 금액을 적는다. */
+#s-report .lbl-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:#EFF1F3;margin:16px 0 14px;}
+#s-report .lbl-bar i{display:block;height:100%;transition:width .7s cubic-bezier(.2,.8,.2,1);}
+#s-report .lbl-bar i.need{background:#D1D6DB;}
+#s-report .lbl-bar i.leak{background:var(--amber);}
+#s-report .lbl-rows{display:flex;flex-direction:column;gap:10px;}
+#s-report .lbl-row{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--t2);}
+#s-report .lbl-row i{width:8px;height:8px;border-radius:50%;flex:0 0 auto;}
+#s-report .lbl-row span{color:var(--t3);font-size:13px;}
+#s-report .lbl-row b{margin-left:auto;color:var(--t1);letter-spacing:0;}
+/* 아직 아무것도 안 붙였을 때 — 무엇을 하면 여기가 채워지는지 말한다. */
+#s-report .lbl-emp{margin-top:12px;background:var(--bg);border-radius:12px;padding:14px;
+  font-size:13px;font-weight:500;color:var(--t3);line-height:1.5;}
