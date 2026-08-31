@@ -26,11 +26,12 @@ export function Settle() {
   if (!data) return null;
 
   const range = `${fmtDate(data.startDate)}~${fmtDate(data.endDate)}`;
-  const month = Number(data.endDate.slice(5, 7));
 
   return (
     <Screen id="settle" title="월간 결산">
-      <AppBar title={`${month}월 챌린지 결산`} onBack={back} steps={range} />
+      {/* <b>달 이름을 뺀다</b>(0828). 챌린지는 달력 달이 아니라 30일 주기라 '7월 결산'이
+          7.16~8.15 를 가리키는 어긋남이 생긴다. 기간은 옆의 `steps` 가 정확히 말한다. */}
+      <AppBar title="챌린지 결산" onBack={back} steps={range} />
       <Scroll>
         <div className="pad">
           <div className="h-title">한 달, 수고했어요</div>

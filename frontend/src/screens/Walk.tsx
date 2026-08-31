@@ -1,5 +1,15 @@
 /**
- * ON-01 워크스루 — 가로로 넘기는 3장 (프로토타입_0818 `s-walk`).
+ * ON-01 워크스루 — <b>한 장</b> (프로토타입_0828 `s-walk.walk-single`).
+ *
+ * <h2>0828 이 셋을 하나로 줄였다</h2>
+ *
+ * 0818 은 가로로 넘기는 3장이었다. 0828 은 첫 장만 남기고 나머지 둘과 점 표시를 숨겼다
+ * (`#s-walk.walk-single .walk-slide:nth-child(n+2){display:none}`). 앱을 처음 여는 사람에게
+ * 세 번 넘기라고 하는 것은 <b>연결하기까지 가는 길을 세 칸 늘린 것</b>이고, 넘기지 않고
+ * 이탈하면 두 번째·세 번째 장은 아무에게도 안 읽힌다.
+ *
+ * <p>지운 것이 아니라 <b>숨긴 것</b>이라는 점이 중요하다 — 2·3장의 마크업과 그림은 그대로
+ * 두어, 다시 셋으로 돌리려면 클래스 하나만 떼면 된다.
  *
  * <b>0818 개편으로 통째로 바뀌었다.</b> 예전에는 아이콘 + 제목 + 부제의 흐름 배치였고 위에
  * 뒤로·건너뛰기가 있었다. 지금은 <b>그림이 주인공</b>이고 글은 한 덩어리이며, 위쪽 버튼 줄이
@@ -24,8 +34,15 @@ import { useSession } from '../state/session';
 import { api } from '../lib/api';
 import { DEMO_CI, DEMO_ENABLED } from '../lib/config';
 
-/** 장 수. 점·버튼·스크롤이 같은 값을 봐야 어긋나지 않는다. */
+/**
+ * 장 수. 점·버튼·스크롤이 같은 값을 봐야 어긋나지 않는다.
+ *
+ * <p><b>0828 은 한 장만 보여 준다</b>(`SINGLE`). 마크업은 셋을 그대로 두고 CSS 로 가리므로,
+ * 되돌리려면 이 값만 `false` 로 두면 된다.
+ */
 const SLIDES = 3;
+/** 0828 — 첫 장만 보여 준다. */
+const SINGLE = true;
 
 export function Walk() {
   const { go, setUserId, setLinked } = useSession();
@@ -37,7 +54,7 @@ export function Walk() {
   const [error, setError] = useState<unknown>(null);
   /** 화면 자체의 등장(점·버튼)은 마운트 직후 한 번(프로토타입 `wshow`). */
   const [shown, setShown] = useState(false);
-  const last = SLIDES - 1;
+  const last = SINGLE ? 0 : SLIDES - 1;
 
   useEffect(() => {
     const t = window.setTimeout(() => setShown(true), 30);
@@ -81,13 +98,15 @@ export function Walk() {
   const slideClass = (i: number) => `walk-slide${seen.has(i) ? ' seen' : ''}`;
 
   return (
-    <section id="s-walk" className={`screen walk${shown ? ' wshow' : ''}`}
+    <section id="s-walk" className={`screen walk${SINGLE ? ' walk-single' : ''}${shown ? ' wshow' : ''}`}
       style={{ background: '#fff', paddingTop: 0 }} aria-label="MOA 소개">
       <div className="walk-track" ref={track} onScroll={sync}>
 
         {/* 1/3 — 날개 달린 돈주머니. 부유와 회전을 겹쳐 같은 자세가 반복되지 않게 한다. */}
         <div className={slideClass(0)} aria-hidden={idx !== 0}>
-          <div className="walk-t">매달 어디로 갔는지 모르는 돈,<br />MOA가 찾아드릴게요</div>
+          {/* 0828 정정 — <b>무엇을 하면 되는지</b>를 첫 문장에 넣는다. 한 장만 보여 주므로
+              이 문장이 연결하기까지 가는 유일한 안내다. */}
+          <div className="walk-t">어디로 새는지 모르는 돈,<br />카드를 연결하면 MOA가 찾아드릴게요</div>
           <div className="walk-art w1"
             style={{ left: 'calc(50% - 7.5px)', top: 328, width: 198, height: 198 }}>
             <span className="w-fly">

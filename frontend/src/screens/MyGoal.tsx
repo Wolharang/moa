@@ -24,6 +24,7 @@ import { useState } from 'react';
 import { Sheet } from '../components/Sheet';
 import { AppBar, ErrorBox, Loading, Screen, Scroll, SectionTitle } from '../components/ui';
 import { useSession } from '../state/session';
+import { useGuardian } from '../state/guardian';
 import { useAsync } from '../state/useAsync';
 import { api, type GoalView } from '../lib/api';
 import { man, pctNum, won } from '../lib/format';
@@ -36,6 +37,8 @@ const dateLabel = (d: string) => `${d.slice(0, 4)}년 ${Number(d.slice(5, 7))}�
 
 export function MyGoal() {
   const { back, go, userId, view } = useSession();
+  /** 이번 달 진행분 — 아직 정산 전이라 통장 잔액과 갈라 보여 준다. */
+  const { home } = useGuardian();
   const snap = useAsync(() => api.points(userId), [userId]);
   const [dropping, setDropping] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -67,6 +70,8 @@ export function MyGoal() {
   }
 
   const remaining = Math.max(0, goal.targetAmount - goal.balance);
+  /** 이번 달 지키는 중 — 월말 정산 전이라 통장에 아직 안 들어간 금액이다. */
+  const pending = Math.max(0, home?.challenge?.securedSaving ?? 0);
   const history = goal.monthlyHistory ?? [];
   const peak = history.reduce((m, h) => Math.max(m, h.amount), 0);
 
@@ -102,8 +107,20 @@ export function MyGoal() {
                aria-label={`${goal.name} 진행률`}>
             <i style={{ width: `${Math.min(100, Math.round(goal.progress * 100))}%` }} />
           </div>
+          {/*
+            <b>확정과 진행 중을 가른다</b>(0828). 예전에는 '지킨 돈' 한 줄이었는데, 그 값에
+            이번 달 진행분이 섞이면 월말에 숫자가 내려갈 수 있다 — 지킨 줄 알았던 돈이 줄면
+            사용자는 앱을 못 믿는다. 통장에 든 것(확정)과 아직 바뀔 수 있는 것을 따로 적는다.
+          */}
           <div className="gv-leg">
-            <span><i className="gv-dot on" />지킨 돈 {won(goal.balance)}</span>
+            <span><i className="gv-dot on" />확정된 지킨 돈 {won(goal.balance)}</span>
+          </div>
+          {pending > 0 && (
+            <div className="gv-leg">
+              <span><i className="gv-dot pend" />이번 달 지키는 중 {won(pending)}</span>
+            </div>
+          )}
+          <div className="gv-leg">
             <span><i className="gv-dot" />남은 돈 {won(remaining)}</span>
           </div>
 

@@ -71,6 +71,13 @@ public class PrivacyService {
     private final com.finntech.repository.UserMerchantStanceRepository merchantStanceRepository;
     private final CutCandidateSelectionRepository cutSelectionRepository;
     /**
+     * 결제별 사람의 답(V49).
+     *
+     * <p><b>이것도 개인정보다</b> — 어느 결제를 아까워했는지가 그 사람의 판단을 그대로
+     * 드러낸다. 결제를 지우고 답을 남기면 무엇을 샀는지는 지워도 무엇을 후회했는지는 남는다.
+     */
+    private final com.finntech.repository.PaymentVerdictRepository paymentVerdictRepository;
+    /**
      * 정리된 소비 원장(V34)과 그 재작성 대기열.
      *
      * <p><b>이 표는 개인정보의 사본이다</b> — 어디서 무엇을 언제 얼마에 샀는지가 한 줄에 다
@@ -125,6 +132,7 @@ public class PrivacyService {
                           UserSpendingOverrideRepository overrideRepository,
                           com.finntech.repository.UserMerchantStanceRepository merchantStanceRepository,
                           CutCandidateSelectionRepository cutSelectionRepository,
+                          com.finntech.repository.PaymentVerdictRepository paymentVerdictRepository,
                           com.finntech.repository.SpendingLedgerRepository spendingLedgerRepository,
                           com.finntech.repository.SpendingLedgerDirtyRepository spendingLedgerDirtyRepository,
                           com.finntech.repository.UsageEventRepository usageEventRepository,
@@ -160,6 +168,7 @@ public class PrivacyService {
         this.overrideRepository = overrideRepository;
         this.merchantStanceRepository = merchantStanceRepository;
         this.cutSelectionRepository = cutSelectionRepository;
+        this.paymentVerdictRepository = paymentVerdictRepository;
         this.spendingLedgerRepository = spendingLedgerRepository;
         this.spendingLedgerDirtyRepository = spendingLedgerDirtyRepository;
         this.usageEventRepository = usageEventRepository;
@@ -299,6 +308,8 @@ public class PrivacyService {
         // 가맹점 판정 성향도 사용자가 쌓은 판단이다 — 어디서 무엇을 사는지가 드러난다.
         merchantStanceRepository.deleteByUserId(userId);
         cutSelectionRepository.deleteByUserId(userId);   // 절약후보 선택추적(⑤)도 소비결정 정보이므로 파기
+        // 결제별로 붙인 답(V49) — 어느 결제를 아까워했는지가 남으면 파기가 아니다.
+        paymentVerdictRepository.deleteByUserId(userId);
         // 정리된 소비 원장(V34)은 위 결제들의 **사본**이다 — 어디서 무엇을 언제 샀는지가
         // 한 줄에 다 있다. 원본만 지우면 파기했다고 해놓고 그대로 남는다.
         spendingLedgerRepository.deleteByUserId(userId);

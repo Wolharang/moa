@@ -37,6 +37,8 @@ public class ApiController {
     private final CardRecommendService cardRecommendService;
     private final ReportService reportService;
     private final com.finntech.service.PeriodSpendService periodSpend;
+    /** 결제별 사람의 답 — 0828 이 또래 비교 자리를 이 요약에 내줬다. */
+    private final com.finntech.service.PaymentVerdictService paymentVerdicts;
     private final AlertService alertService;
     private final ScoreService scoreService;
     private final NarrativeService narrativeService;
@@ -61,10 +63,12 @@ public class ApiController {
                          Clock clock,
                          com.finntech.service.PeerCompareService peerCompare,
                          com.finntech.service.PeriodSpendService periodSpend,
-                         IndustryCategoryMapper industryMapper) {
+                         IndustryCategoryMapper industryMapper,
+                         com.finntech.service.PaymentVerdictService paymentVerdicts) {
         this.industryMapper = industryMapper;
         this.peerCompare = peerCompare;
         this.periodSpend = periodSpend;
+        this.paymentVerdicts = paymentVerdicts;
         this.engine = engine;
         this.cardRecommendService = cardRecommendService;
         this.reportService = reportService;
@@ -152,6 +156,52 @@ public class ApiController {
         // 과거로 너무 멀리 가면 빈 구간만 훑는다 — 2년으로 끊는다(주 104 · 달 24).
         int capped = Math.max(0, Math.min("month".equalsIgnoreCase(period) ? 24 : 104, offset));
         return periodSpend.of(userId, period, capped);
+    }
+
+    /**
+     * 이번 주/달에 <b>사람이 붙인 라벨</b> 요약 (프로토타입_0828 주간 리포트).
+     *
+     * <p>0828 은 또래 비교를 걷어내고 이 자리를 여기에 내줬다 — 또래의 중앙값은 남의
+     * 이야기라 내가 할 수 있는 일이 없는데, 내가 붙인 라벨은 내가 방금 한 판단이라
+     * 다음 주에 무엇을 바꿀지로 이어진다.
+     */
+    @GetMapping("/report/labels")
+    public com.finntech.service.PaymentVerdictService.LabelSummary labels(
+            @RequestParam Long userId,
+            @RequestParam(defaultValue = "week") String period,
+            @RequestParam(defaultValue = "0") int offset) {
+        user(userId);
+        int capped = Math.max(0, Math.min("month".equalsIgnoreCase(period) ? 24 : 104, offset));
+        return paymentVerdicts.summary(userId, period, capped);
+    }
+
+    /** 결제 한 건에 답을 적는다. 같은 결제를 다시 누르면 덮어쓴다. */
+    @PostMapping("/verdict")
+    public Map<String, Object> putVerdict(@RequestBody VerdictRequest req) {
+        user(req.userId());
+        if (req.paymentId() == null || req.paymentId().isBlank()) {
+            throw new IllegalArgumentException("paymentId is required");
+        }
+        if (req.waste() == null) paymentVerdicts.clear(req.userId(), req.paymentId());
+        else paymentVerdicts.put(req.userId(), req.paymentId(), req.waste());
+        return Map.of("paymentId", req.paymentId(), "waste", req.waste() == null ? "none" : req.waste());
+    }
+
+    /** {@code waste} 가 없으면 답을 지운다 — 되돌릴 길이 없으면 사람은 애초에 안 누른다. */
+    public record VerdictRequest(Long userId, String paymentId, Boolean waste) {}
+
+    /**
+     * 그 사람이 붙인 답 전부 — 결제 id → {@code WASTE}/{@code FINE}.
+     *
+     * <p>결제 목록에 얹어 내리지 않고 따로 주는 이유: 결제 행은 무겁고 자주 다시 불리는데,
+     * 답은 가볍고 자주 바뀐다. 갈라 두면 답 하나를 눌렀을 때 결제 목록을 다시 안 받아도 된다.
+     */
+    @GetMapping("/verdict")
+    public Map<String, String> verdicts(@RequestParam Long userId) {
+        user(userId);
+        Map<String, String> out = new java.util.LinkedHashMap<>();
+        paymentVerdicts.mine(userId).forEach((k, v) -> out.put(k, v.name()));
+        return out;
     }
 
     @GetMapping("/report/monthly")

@@ -3,6 +3,7 @@ package com.finntech.web;
 import com.finntech.engine.AnalysisEngine;
 import com.finntech.engine.AnalysisResult;
 import com.finntech.engine.IndustryCategoryMapper;
+import com.finntech.engine.SaveItemSelector;
 import com.finntech.ml.WasteScoringService;
 import com.finntech.service.MyDataLinkService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -46,17 +47,22 @@ public class OnboardingController {
     private final WasteScoringService wasteScoringService;
     private final IndustryCategoryMapper industryMapper;
     private final com.finntech.config.AnalysisProperties props;
+    /** 소분류를 아는 유일한 원천 — 사전({@code merchant_category.category3}). */
+    private final com.finntech.repository.MerchantCategoryRepository dictionary;
     private final Clock clock;
 
     public OnboardingController(AnalysisEngine engine, MyDataLinkService myDataLinkService,
                                 WasteScoringService wasteScoringService,
                                 IndustryCategoryMapper industryMapper,
-                                com.finntech.config.AnalysisProperties props, Clock clock) {
+                                com.finntech.config.AnalysisProperties props,
+                                com.finntech.repository.MerchantCategoryRepository dictionary,
+                                Clock clock) {
         this.engine = engine;
         this.myDataLinkService = myDataLinkService;
         this.wasteScoringService = wasteScoringService;
         this.industryMapper = industryMapper;
         this.props = props;
+        this.dictionary = dictionary;
         this.clock = clock;
     }
 
@@ -169,7 +175,66 @@ public class OnboardingController {
         body.put("from", from);
         body.put("to", now);
         body.put("categories", categories);
+        // 고를 수 있는 단위 — 중분류가 아니라 소분류다. 화면의 '아껴볼 소비'와 분류 덱이 읽는다.
+        body.put("saveItems", saveItems(byCategory, days));
         return body;
+    }
+
+    /**
+     * 창 안의 결제를 <b>소분류</b>로 모아 아껴볼 항목을 낸다.
+     *
+     * <p>판정을 여기서 하지 않는다 — 위에서 이미 만든 결제 행(ML 낭비 판정 포함)을 그대로
+     * 넘기고, 고르는 규칙은 {@link SaveItemSelector} 한 곳에 둔다(원칙 2).
+     *
+     * <p>소분류는 <b>사전에서만</b> 온다. {@code user_payment} 에는 칸이 없다(V39 는 원장과
+     * 사전에만 넣었다). 가맹점마다 묻지 않으려고 상호를 모아 한 번에 당긴다.
+     */
+    private List<Map<String, Object>> saveItems(Map<String, List<Map<String, Object>>> byCategory, int days) {
+        // 상호를 모아 사전을 한 번에 당긴다 — 가맹점마다 물으면 결제 수만큼 질의가 나간다.
+        List<String> names = byCategory.values().stream().flatMap(List::stream)
+                .map(r -> (String) r.get("merchantName"))
+                .filter(n -> n != null && !n.isBlank())
+                .distinct().toList();
+        Map<String, String> subByName = new java.util.HashMap<>();
+        if (!names.isEmpty()) {
+            for (com.finntech.domain.MerchantCategory m : dictionary.findByMerchantNameIn(names)) {
+                String sub = m.getCategory3();
+                if (sub != null && !sub.isBlank()) subByName.putIfAbsent(m.getMerchantName(), sub);
+            }
+        }
+
+        List<SaveItemSelector.Payment> window = new ArrayList<>();
+        // **중분류는 묶음의 열쇠에서 온다.** 결제 행에는 추정을 반영해 재배치한 결과가 안 적혀
+        // 있고, 그 재배치를 한 것이 바로 이 묶음이다. 행에서 다시 읽으면 어긋난다.
+        for (var e : byCategory.entrySet()) {
+            String category2 = e.getKey();
+            for (Map<String, Object> r : e.getValue()) {
+                String name = (String) r.get("merchantName");
+                String sub = name == null ? null : subByName.get(name);
+                // 사전이 소분류를 안 들고 있으면 브랜드로 한 번 더 본다 — 브랜드는 이름에 붙는 성질이다.
+                if (sub == null) {
+                    String byBrand = industryMapper.subOfBrand((String) r.get("brand"));
+                    if (byBrand != null && !byBrand.isBlank()) sub = byBrand;
+                }
+                window.add(new SaveItemSelector.Payment(
+                        sub, category2, ((Number) r.get("amount")).longValue(),
+                        (Boolean) r.get("waste"), (String) r.get("reason")));
+            }
+        }
+
+        return SaveItemSelector.selectFrom(window, props.getCutCandidate(), days,
+                        props.getFds().getMinSamplesPerCategory(), industryMapper::discretionaryOf)
+                .stream().map(i -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("sub", i.sub());
+                    m.put("categoryCode", i.category2());
+                    m.put("monthlyAmount", i.monthlyAmount());
+                    m.put("count", i.count());
+                    m.put("wasteAmount", i.wasteAmount());
+                    m.put("suggestedCut", i.suggestedCut());
+                    m.put("why", i.why());
+                    return m;
+                }).toList();
     }
 
     /** 카테고리 이름을 코드에 박지 않는다(마스터 §4 원칙 4) — 상수는 매퍼가 갖는다. */
