@@ -118,6 +118,22 @@ public class IndustryCategoryMapper {
     private final Map<String, String> subByIndustryName;
     /** 브랜드 → 소분류. 업종 이름이 답을 못 주는 자리를 메운다({@code 배달의민족 → 배달}). */
     private final Map<String, String> subByBrand;
+    /**
+     * <b>업종코드 → 소분류.</b> 위의 두 표를 뒤집어 기동할 때 한 번 만든다.
+     *
+     * <p><b>왜 필요한가.</b> 소분류를 사전({@code merchant_category.category3})에서만 찾으면,
+     * 사전에 없는 가맹점은 소분류를 영영 못 받는다. 사전에는 사람이 확인한 곳만 들어가므로
+     * <b>대부분의 결제가 거기 없다</b> — 실제로 온보딩이 아껴볼 항목을 하나도 못 내서 지킬 돈이
+     * 0원이 되고 챌린지를 시작할 수 없었다(실측 2026-08-31, 창 안 420만원인 사용자).
+     *
+     * <p>업종코드는 <b>명세서가 들고 오는 사실</b>이라 사전과 무관하게 있다. 코드 →
+     * 세세분류 이름 → 소분류로 두 번 뒤집으면 답이 나온다.
+     *
+     * <p><b>갈리면 답하지 않는다.</b> 한 코드가 여러 이름에 걸리고 그 이름들의 소분류가
+     * 다르면 어느 것인지 알 수 없다 — 억지로 고르면 없는 사실을 만드는 것이다
+     * ({@link #codesOfSub} 가 만장일치를 요구하는 것과 같은 이유).
+     */
+    private final Map<String, String> subByIndustryCode;
 
     @SuppressWarnings("unchecked")
     public IndustryCategoryMapper(ObjectMapper objectMapper) {
@@ -146,6 +162,7 @@ public class IndustryCategoryMapper {
             this.subByIndustryName = subName == null ? Map.of() : subName;
             Map<String, String> subBrand = (Map<String, String>) root.get("subByBrand");
             this.subByBrand = subBrand == null ? Map.of() : subBrand;
+            this.subByIndustryCode = buildSubByCode(this.ntsByFineName, this.subByIndustryName);
             verifySubInvariant();
         } catch (IOException e) {
             throw new UncheckedIOException("업종코드 대조표를 읽지 못했다: " + PATH, e);
@@ -196,6 +213,39 @@ public class IndustryCategoryMapper {
     public String subOfIndustryName(String industryName) {
         if (industryName == null) return "";
         return subByIndustryName.getOrDefault(industryName.trim(), "");
+    }
+
+    /**
+     * 두 표를 뒤집어 <b>업종코드 → 소분류</b> 를 만든다. 기동할 때 한 번만 돈다.
+     *
+     * <p>한 코드에 소분류가 둘 이상 걸리면 <b>그 코드는 빼 버린다</b> — 어느 것인지 알 방법이
+     * 없는데 하나를 고르면 없는 사실을 만드는 것이다.
+     */
+    private static Map<String, String> buildSubByCode(Map<String, java.util.List<String>> ntsByFineName,
+                                                      Map<String, String> subByIndustryName) {
+        Map<String, String> out = new java.util.HashMap<>();
+        java.util.Set<String> conflicted = new java.util.HashSet<>();
+        ntsByFineName.forEach((name, codes) -> {
+            String sub = subByIndustryName.get(name);
+            if (sub == null || sub.isBlank() || codes == null) return;
+            for (String code : codes) {
+                String had = out.putIfAbsent(code, sub);
+                if (had != null && !had.equals(sub)) conflicted.add(code);
+            }
+        });
+        conflicted.forEach(out::remove);
+        return Map.copyOf(out);
+    }
+
+    /**
+     * <b>업종코드 → 소분류.</b> 모르거나 갈리는 코드면 빈 문자열.
+     *
+     * <p>사전에 없는 가맹점의 소분류를 여기서 받는다 — 업종코드는 명세서가 들고 오는 사실이라
+     * 사전과 무관하게 있다.
+     */
+    public String subOfIndustryCode(String industryCode) {
+        if (industryCode == null || industryCode.isBlank()) return "";
+        return subByIndustryCode.getOrDefault(industryCode.trim(), "");
     }
 
     /**
