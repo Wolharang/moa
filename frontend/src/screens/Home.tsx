@@ -355,15 +355,16 @@ export function Home() {
                   <div className="list-item" style={{ padding: '12px 0' }}>
                     <span className="ic" style={{ background: bg }}><Icon id={icon} /></span>
                     <div className="tx">
-                      <b>
-                        {name}
-                        {/* 답을 붙였으면 이름 옆에 딱지로 붙는다 — 누르면 다시 고칠 수 있다. */}
+                      <b>{name}</b>
+                      {/* <b>답 딱지는 보조줄에 둔다.</b> 이름 줄에 두었더니 터치 크기(44px)가
+                          20px 짜리 이름 줄을 부풀려 상호가 잘렸다(실측 2026-08-31). */}
+                      <span>
+                        {shortDate(p.date)} · {p.category2 ?? p.category}
                         {said[p.paymentId] && (
                           <VerdictChips value={said[p.paymentId]}
                             onPick={(v) => void answer(p.paymentId, v)} />
                         )}
-                      </b>
-                      <span>{shortDate(p.date)} · {p.category2 ?? p.category}</span>
+                      </span>
                     </div>
                     <span className="amt">-{won(p.amount)}</span>
                   </div>
